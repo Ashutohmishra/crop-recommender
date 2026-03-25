@@ -1,0 +1,1474 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Smart Crop Recommender{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN SYSTEM
+═══════════════════════════════════════════ */
+:root {
+  --g1: #0d3320;
+  --g2: #1a5c35;
+  --g3: #2d8a52;
+  --lime: #7ed957;
+  --gold: #f5c842;
+  --cream: #f7f5ee;
+  --clay: #ede8dc;
+  --dark: #111a13;
+  --muted: #667868;
+  --card-r: 24px;
+  --ff-head: 'Fraunces', Georgia, serif;
+  --ff-body: 'Outfit', sans-serif;
+  --shadow-green: 0 20px 60px rgba(13,51,32,.22);
+  --shadow-card: 0 8px 32px rgba(13,51,32,.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--ff-body);
+  background: var(--cream);
+  color: var(--dark);
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ── CUSTOM CURSOR ── */
+.cursor {
+  position: fixed; width: 14px; height: 14px;
+  background: var(--lime); border-radius: 50%;
+  pointer-events: none; z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition: transform .12s, width .25s, height .25s, background .25s;
+  mix-blend-mode: multiply;
+}
+.cursor-ring {
+  position: fixed; width: 38px; height: 38px;
+  border: 2px solid var(--g3); border-radius: 50%;
+  pointer-events: none; z-index: 99998;
+  transform: translate(-50%, -50%);
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1), width .3s, height .3s;
+  opacity: .6;
+}
+body:hover .cursor { width: 14px; height: 14px; }
+a:hover ~ .cursor, button:hover ~ .cursor { width: 22px; height: 22px; }
+
+/* ── CANVAS PARTICLE BG ── */
+#particleCanvas {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+  opacity: .35;
+}
+
+
+
+/* ── HERO ── */
+.hero {
+  position: relative; min-height: 100vh;
+  display: flex; align-items: center;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--g1) 0%, var(--g2) 45%, #0a4028 100%);
+  padding: 60px 0 80px;
+}
+.hero-noise {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: .5; pointer-events: none;
+}
+.hero-glow {
+  position: absolute; width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(126,217,87,.18) 0%, transparent 70%);
+  top: -200px; right: -200px; pointer-events: none;
+  animation: rotateGlow 20s linear infinite;
+}
+@keyframes rotateGlow { to { transform: rotate(360deg); } }
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(126,217,87,.15);
+  border: 1px solid rgba(126,217,87,.4);
+  color: var(--lime); border-radius: 50px;
+  padding: 7px 18px; font-size: .78rem; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 20px;
+  animation: fadeUp .8s .1s both;
+}
+.hero-title {
+  font-family: var(--ff-head);
+  font-size: clamp(2.8rem, 6vw, 5.5rem);
+  font-weight: 900; color: #fff;
+  line-height: 1.05; margin-bottom: 20px;
+  animation: fadeUp .8s .25s both;
+}
+.hero-title .accent { color: var(--lime); font-style: italic; }
+.hero-sub {
+  color: rgba(255,255,255,.72);
+  font-size: 1.1rem; font-weight: 300;
+  max-width: 520px; line-height: 1.7;
+  margin-bottom: 36px;
+  animation: fadeUp .8s .4s both;
+}
+.hero-btns { animation: fadeUp .8s .55s both; }
+.btn-hero-primary {
+  background: var(--lime); color: var(--dark);
+  border: none; border-radius: 50px;
+  padding: 14px 32px; font-size: 1rem; font-weight: 700;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 8px 28px rgba(126,217,87,.45);
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
+}
+.btn-hero-primary:hover {
+  transform: translateY(-5px) scale(1.06);
+  box-shadow: 0 18px 45px rgba(126,217,87,.55);
+  background: #a3f070; color: var(--dark);
+}
+.btn-hero-outline {
+  border: 2px solid rgba(255,255,255,.35);
+  color: #fff; border-radius: 50px;
+  padding: 13px 28px; font-size: .95rem; font-weight: 600;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.07); backdrop-filter: blur(8px);
+  transition: all .3s;
+}
+.btn-hero-outline:hover {
+  border-color: var(--lime); color: var(--lime);
+  transform: translateY(-3px);
+  background: rgba(126,217,87,.1);
+}
+.kissan-id-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: rgba(245,200,66,.12);
+  border: 1px solid rgba(245,200,66,.4);
+  border-radius: 14px; padding: 12px 20px;
+  margin-top: 28px; animation: fadeUp .8s .7s both;
+}
+.kissan-id-badge .id-icon {
+  width: 38px; height: 38px; background: var(--gold);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: var(--dark); font-weight: 800;
+}
+.kissan-id-badge .id-text { font-size: .82rem; color: rgba(255,255,255,.7); }
+.kissan-id-badge .id-val { font-size: .92rem; font-weight: 700; color: var(--gold); }
+
+/* FLOATING CROP CARD */
+.hero-card-float {
+  position: relative;
+  animation: fadeUp .8s .6s both;
+}
+.floating-crop-card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  backdrop-filter: blur(20px);
+  border-radius: 28px; padding: 28px;
+  color: #fff;
+  animation: float 5s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+.crop-result-item {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(126,217,87,.1);
+  border: 1px solid rgba(126,217,87,.25);
+  border-radius: 14px; padding: 14px 18px; margin-bottom: 10px;
+  transition: all .3s;
+}
+.crop-result-item:hover {
+  background: rgba(126,217,87,.2);
+  transform: translateX(6px);
+}
+.crop-emoji { font-size: 2rem; }
+.crop-conf { font-size: .75rem; color: rgba(255,255,255,.6); }
+.crop-name-big { font-size: 1.05rem; font-weight: 700; color: #fff; }
+.conf-bar { height: 5px; background: rgba(255,255,255,.15); border-radius: 3px; margin-top: 5px; }
+.conf-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg,var(--lime),var(--gold)); transition: width 1.5s ease; }
+
+/* MINI TIP BOX */
+.tip-float {
+  position: absolute; bottom: -24px; left: -30px;
+  background: #fff; border-radius: 18px; padding: 14px 18px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.18);
+  display: flex; align-items: center; gap: 10px;
+  min-width: 230px; animation: floatB 6s ease-in-out infinite .5s;
+  z-index: 2;
+}
+@keyframes floatB { 0%,100%{transform:translateY(0) rotate(-1deg)} 50%{transform:translateY(-8px) rotate(0deg)} }
+.tip-float .tip-icon { font-size: 1.4rem; }
+.tip-float .tip-label { font-size: .7rem; font-weight: 700; color: var(--g3); letter-spacing: 1px; text-transform: uppercase; }
+.tip-float .tip-msg { font-size: .82rem; color: #444; line-height: 1.3; }
+
+/* ── STATS COUNTER ── */
+.stats-bar {
+  background: var(--dark);
+  padding: 28px 0;
+  position: relative; z-index: 2;
+  border-top: 1px solid rgba(126,217,87,.12);
+  border-bottom: 1px solid rgba(126,217,87,.12);
+}
+.stat-item { text-align: center; }
+.stat-num {
+  font-family: var(--ff-head);
+  font-size: 2.8rem; font-weight: 900;
+  color: var(--lime); line-height: 1;
+}
+.stat-label { font-size: .82rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+.stat-divider { width: 1px; background: rgba(255,255,255,.08); align-self: stretch; }
+
+/* ── SECTION HEADINGS ── */
+.section-eyebrow {
+  display: inline-block;
+  font-size: .72rem; font-weight: 700; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--g3);
+  background: rgba(45,138,82,.1);
+  border-radius: 30px; padding: 5px 16px;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-family: var(--ff-head);
+  font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+  font-weight: 900; color: var(--dark); line-height: 1.15;
+  margin-bottom: 14px;
+}
+.section-title .accent { color: var(--g3); font-style: italic; }
+.section-sub { color: var(--muted); font-size: 1rem; font-weight: 300; max-width: 520px; line-height: 1.7; }
+
+/* ── FEATURE CARDS AUTO-SCROLL ROW ── */
+.features-section { padding: 90px 0; background: var(--cream); overflow: hidden; }
+.features-track-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+.features-track {
+  display: flex; gap: 20px;
+  animation: scrollTrack 30s linear infinite;
+  width: max-content;
+}
+.features-track:hover { animation-play-state: paused; }
+@keyframes scrollTrack { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+.feat-card {
+  flex: 0 0 280px;
+  background: #fff;
+  border-radius: var(--card-r);
+  padding: 28px 24px;
+  border: 1.5px solid rgba(45,138,82,.1);
+  box-shadow: var(--shadow-card);
+  transition: all .45s cubic-bezier(.34,1.56,.64,1);
+  cursor: default; position: relative; overflow: hidden;
+}
+.feat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--g3), var(--lime));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .4s;
+}
+.feat-card:hover::before { transform: scaleX(1); }
+.feat-card:hover {
+  transform: translateY(-16px) scale(1.04);
+  box-shadow: 0 30px 70px rgba(13,51,32,.2);
+  border-color: rgba(45,138,82,.3);
+}
+.feat-icon {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--g2), var(--g3));
+  border-radius: 16px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(26,92,53,.3);
+  transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+}
+.feat-card:hover .feat-icon { transform: rotate(8deg) scale(1.15); }
+.feat-title { font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+.feat-desc { font-size: .85rem; color: var(--muted); line-height: 1.6; }
+
+/* ── HOW IT WORKS ── */
+.how-section { padding: 90px 0; background: var(--dark); }
+.step-card {
+  text-align: center; padding: 36px 24px;
+  transition: all .4s;
+}
+.step-card:hover { transform: translateY(-10px); }
+.step-num {
+  width: 64px; height: 64px;
+  background: linear-gradient(135deg, var(--g2), var(--lime));
+  border-radius: 50%; margin: 0 auto 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--ff-head); font-size: 1.6rem; font-weight: 900; color: #fff;
+  box-shadow: 0 8px 28px rgba(126,217,87,.35);
+}
+.step-title { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.step-desc { font-size: .85rem; color: rgba(255,255,255,.55); line-height: 1.6; }
+.step-connector {
+  position: absolute; top: 32px; left: calc(50% + 32px); right: calc(-50% + 32px);
+  height: 2px;
+  background: linear-gradient(90deg, var(--g3), transparent);
+}
+
+/* ── TIP BOX ROW ── */
+.tips-section { padding: 80px 0; background: var(--clay); }
+.tip-card {
+  background: #fff; border-radius: 20px; padding: 28px;
+  box-shadow: var(--shadow-card);
+  border-left: 5px solid var(--g3);
+  transition: all .4s cubic-bezier(.34,1.56,.64,1);
+  height: 100%;
+}
+.tip-card:hover {
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 0 24px 60px rgba(13,51,32,.2);
+  border-left-color: var(--lime);
+}
+.tip-card-icon { font-size: 2rem; margin-bottom: 12px; }
+.tip-card-label { font-size: .72rem; font-weight: 700; letter-spacing: 2px; color: var(--g3); text-transform: uppercase; margin-bottom: 6px; }
+.tip-card-text { font-size: .9rem; color: #444; line-height: 1.6; }
+
+/* ── TECHNOLOGY STACK ── */
+.tech-section { padding: 80px 0; background: var(--cream); }
+.tech-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: #fff; border-radius: 50px;
+  padding: 12px 22px;
+  border: 1.5px solid rgba(45,138,82,.15);
+  box-shadow: var(--shadow-card);
+  font-size: .9rem; font-weight: 600; color: var(--dark);
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
+  cursor: default;
+}
+.tech-chip:hover {
+  transform: translateY(-8px) scale(1.07);
+  box-shadow: 0 20px 50px rgba(13,51,32,.18);
+  border-color: var(--lime);
+  background: linear-gradient(135deg, #f0fef0, #fff);
+}
+.tech-chip .tech-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* ── KISSAN ID SECTION ── */
+.kissan-section { padding: 80px 0; background: linear-gradient(135deg, var(--g1), var(--g2)); }
+.kissan-card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 28px; padding: 40px;
+  backdrop-filter: blur(14px);
+  transition: all .4s;
+}
+.kissan-card:hover { border-color: rgba(126,217,87,.4); transform: scale(1.02); }
+.id-display {
+  background: rgba(245,200,66,.12);
+  border: 1.5px solid rgba(245,200,66,.4);
+  border-radius: 16px; padding: 18px 24px;
+  font-family: 'Courier New', monospace;
+  font-size: 1.6rem; font-weight: 700; color: var(--gold);
+  letter-spacing: 4px; text-align: center;
+  animation: blink 2.5s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.7} }
+.id-feature { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.id-feature i { color: var(--lime); width: 20px; }
+.id-feature span { font-size: .9rem; color: rgba(255,255,255,.8); }
+
+/* ── CROP SHOWCASE AUTO-ROW ── */
+.showcase-section { padding: 80px 0; background: #fff; overflow: hidden; }
+.crops-row-track {
+  display: flex; gap: 16px; width: max-content;
+  animation: scrollCrops 25s linear infinite;
+}
+.crops-row-track:hover { animation-play-state: paused; }
+.crops-row-track.reverse { animation: scrollCropsR 28s linear infinite; }
+.crops-row-track.reverse:hover { animation-play-state: paused; }
+@keyframes scrollCrops { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+@keyframes scrollCropsR { from{transform:translateX(-50%)} to{transform:translateX(0)} }
+
+.crop-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--cream); border-radius: 50px;
+  padding: 12px 22px; flex: 0 0 auto;
+  border: 1.5px solid rgba(45,138,82,.12);
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
+  cursor: default;
+}
+.crop-pill:hover {
+  background: var(--g2); color: #fff;
+  border-color: var(--g2);
+  transform: scale(1.1) translateY(-4px);
+  box-shadow: 0 12px 32px rgba(26,92,53,.3);
+}
+.crop-pill:hover .cp-name { color: #fff; }
+.cp-emoji { font-size: 1.3rem; }
+.cp-name { font-size: .9rem; font-weight: 600; color: var(--dark); }
+
+/* ── TESTIMONIALS ── */
+.testi-section { padding: 80px 0; background: var(--clay); overflow: hidden; }
+.testi-track-wrap { overflow: hidden; }
+.testi-track {
+  display: flex; gap: 24px; width: max-content;
+  animation: scrollTestis 35s linear infinite;
+}
+.testi-track:hover { animation-play-state: paused; }
+@keyframes scrollTestis { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.testi-card {
+  flex: 0 0 320px;
+  background: #fff; border-radius: 22px; padding: 28px;
+  box-shadow: var(--shadow-card);
+  border: 1.5px solid rgba(45,138,82,.08);
+  transition: all .4s cubic-bezier(.34,1.56,.64,1);
+}
+.testi-card:hover {
+  transform: translateY(-12px) scale(1.03);
+  box-shadow: 0 28px 65px rgba(13,51,32,.2);
+  border-color: rgba(45,138,82,.3);
+}
+.testi-stars { color: var(--gold); font-size: .9rem; margin-bottom: 12px; letter-spacing: 2px; }
+.testi-text { font-size: .88rem; color: #555; line-height: 1.65; margin-bottom: 18px; font-style: italic; }
+.testi-author { display: flex; align-items: center; gap: 12px; }
+.testi-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--g2), var(--lime));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: #fff; font-weight: 800;
+}
+.testi-name { font-size: .9rem; font-weight: 700; color: var(--dark); }
+.testi-loc { font-size: .75rem; color: var(--muted); }
+
+/* ── FOOTER / CREDITS ── */
+.footer-section {
+  background: var(--dark);
+  padding: 60px 0 36px;
+  border-top: 1px solid rgba(126,217,87,.12);
+}
+.footer-logo {
+  font-family: var(--ff-head);
+  font-size: 2rem; font-weight: 900; color: #fff;
+}
+.footer-logo span { color: var(--lime); }
+.footer-tagline { color: rgba(255,255,255,.45); font-size: .85rem; margin-top: 6px; }
+.footer-link { color: rgba(255,255,255,.55); font-size: .88rem; text-decoration: none; display: block; margin-bottom: 8px; transition: color .25s; }
+.footer-link:hover { color: var(--lime); }
+.footer-heading { color: rgba(255,255,255,.85); font-size: .78rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+
+/* ═══════════════════════════════════════════
+   KISSAN PHOTO FRAME — DEVELOPER SECTION
+═══════════════════════════════════════════ */
+.credit-bar {
+  background: linear-gradient(135deg, rgba(126,217,87,.06), rgba(245,200,66,.06));
+  border: 1px solid rgba(126,217,87,.18);
+  border-radius: 28px; padding: 40px 36px;
+  margin-top: 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.credit-bar::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.dev-title { font-size: .72rem; color: rgba(255,255,255,.4); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
+.dev-subtitle {
+  font-family: var(--ff-head);
+  font-size: 1.4rem; font-weight: 700; color: #fff;
+  margin-bottom: 36px;
+}
+.dev-subtitle span { color: var(--lime); font-style: italic; }
+
+.dev-names {
+  display: flex; align-items: flex-start; justify-content: center; gap: 48px; flex-wrap: wrap;
+}
+
+/* ── KISSAN PHOTO FRAME ── */
+.kissan-dev-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0;
+  transition: all .45s cubic-bezier(.34,1.56,.64,1);
+  cursor: default;
+}
+.kissan-dev-card:hover { transform: translateY(-10px); }
+
+/* The ID Card Frame */
+.kissan-frame {
+  position: relative;
+  width: 200px;
+  background: linear-gradient(160deg, #0d3320 0%, #1a5c35 60%, #0a4028 100%);
+  border-radius: 20px;
+  padding: 0;
+  box-shadow: 0 20px 60px rgba(13,51,32,.55), 0 0 0 1.5px rgba(126,217,87,.25);
+  overflow: hidden;
+  transition: all .45s cubic-bezier(.34,1.56,.64,1);
+}
+.kissan-dev-card:hover .kissan-frame {
+  box-shadow: 0 32px 80px rgba(13,51,32,.7), 0 0 0 2px rgba(126,217,87,.5);
+}
+
+/* Top banner of ID card */
+.kf-header {
+  background: linear-gradient(90deg, var(--g1), var(--g3));
+  padding: 10px 14px 8px;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid rgba(126,217,87,.2);
+}
+.kf-flag {
+  font-size: .75rem;
+}
+.kf-gov-text {
+  flex: 1;
+}
+.kf-gov-text .kf-gov-line1 {
+  font-size: .52rem; font-weight: 700; color: var(--gold); letter-spacing: 1.5px; text-transform: uppercase; line-height: 1.2;
+}
+.kf-gov-text .kf-gov-line2 {
+  font-size: .48rem; color: rgba(255,255,255,.6); letter-spacing: 1px;
+}
+.kf-emblem {
+  width: 22px; height: 22px; background: var(--gold); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem;
+}
+
+/* Photo area */
+.kf-photo-area {
+  padding: 16px 16px 10px;
+  display: flex; justify-content: center;
+}
+.kf-photo-wrap {
+  position: relative;
+  width: 110px; height: 110px;
+}
+/* The decorative corner brackets */
+.kf-photo-wrap::before,
+.kf-photo-wrap::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  border-color: var(--lime);
+  border-style: solid;
+  z-index: 2;
+}
+.kf-photo-wrap::before {
+  top: -3px; left: -3px;
+  border-width: 2.5px 0 0 2.5px;
+  border-radius: 4px 0 0 0;
+}
+.kf-photo-wrap::after {
+  bottom: -3px; right: -3px;
+  border-width: 0 2.5px 2.5px 0;
+  border-radius: 0 0 4px 0;
+}
+.kf-corner-br::before {
+  top: -3px; right: -3px;
+  border-width: 2.5px 2.5px 0 0;
+  border-radius: 0 4px 0 0;
+  left: auto;
+}
+.kf-corner-bl::before {
+  bottom: -3px; left: -3px;
+  border-width: 0 0 2.5px 2.5px;
+  border-radius: 0 0 0 4px;
+  top: auto;
+}
+
+.kf-photo {
+  width: 110px; height: 110px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+  border: 2px solid rgba(126,217,87,.3);
+  background: linear-gradient(135deg, var(--g2), var(--g3));
+  position: relative; z-index: 1;
+}
+
+/* Placeholder avatar when no real photo */
+.kf-photo-placeholder {
+  width: 110px; height: 110px;
+  border-radius: 10px;
+  border: 2px solid rgba(126,217,87,.3);
+  background: linear-gradient(135deg, var(--g2), #1e7042);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; z-index: 1;
+  overflow: hidden;
+}
+.kf-photo-placeholder .kf-initials {
+  font-family: var(--ff-head);
+  font-size: 2.4rem; font-weight: 900; color: rgba(255,255,255,.9);
+  text-shadow: 0 2px 10px rgba(0,0,0,.3);
+  z-index: 1;
+}
+.kf-photo-placeholder::after {
+  content: '';
+  position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+  width: 80px; height: 50px;
+  background: rgba(0,0,0,.2);
+  border-radius: 50%;
+}
+
+/* Info area */
+.kf-info {
+  padding: 0 14px 6px;
+}
+.kf-name {
+  font-family: var(--ff-head);
+  font-size: .88rem; font-weight: 900; color: #fff;
+  text-align: center; letter-spacing: .3px;
+  margin-bottom: 2px;
+}
+.kf-role-badge {
+  display: block; text-align: center;
+  font-size: .6rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--lime); margin-bottom: 10px;
+}
+
+/* Kissan ID strip */
+.kf-id-strip {
+  background: rgba(245,200,66,.1);
+  border-top: 1px solid rgba(245,200,66,.25);
+  border-bottom: 1px solid rgba(245,200,66,.15);
+  padding: 6px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.kf-id-label { font-size: .5rem; color: rgba(255,255,255,.4); letter-spacing: 1.5px; text-transform: uppercase; }
+.kf-id-value { font-family: 'Courier New', monospace; font-size: .65rem; font-weight: 700; color: var(--gold); letter-spacing: 2px; }
+
+/* Barcode-ish strip */
+.kf-barcode {
+  padding: 8px 14px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.kf-barcode-bars {
+  display: flex; gap: 2px; align-items: flex-end; height: 20px;
+}
+.kf-bar {
+  background: rgba(126,217,87,.5);
+  border-radius: 1px;
+  width: 2px;
+}
+.kf-ministry {
+  font-size: .48rem; color: rgba(255,255,255,.3); letter-spacing: 1px; text-transform: uppercase; text-align: center;
+}
+
+/* Hologram shimmer effect on hover */
+.kf-hologram {
+  position: absolute; inset: 0; border-radius: 20px;
+  background: linear-gradient(125deg,
+    transparent 0%,
+    rgba(126,217,87,.04) 30%,
+    rgba(245,200,66,.06) 50%,
+    rgba(126,217,87,.04) 70%,
+    transparent 100%);
+  opacity: 0;
+  transition: opacity .4s;
+  pointer-events: none;
+  z-index: 3;
+}
+.kissan-dev-card:hover .kf-hologram { opacity: 1; }
+
+/* Scan line animation on hover */
+.kf-scan {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(126,217,87,.6), transparent);
+  top: 0;
+  opacity: 0;
+  pointer-events: none; z-index: 4;
+  transition: opacity .3s;
+}
+.kissan-dev-card:hover .kf-scan {
+  opacity: 1;
+  animation: scanLine 1.8s linear infinite;
+}
+@keyframes scanLine {
+  from { top: 0; }
+  to { top: 100%; }
+}
+
+/* Name + role below card */
+.kf-below {
+  margin-top: 16px; text-align: center;
+}
+.kf-below-name {
+  font-size: 1rem; font-weight: 800; color: #fff;
+  font-family: var(--ff-head);
+}
+.kf-below-role { font-size: .78rem; color: rgba(255,255,255,.5); margin-top: 2px; }
+.kf-socials {
+  display: flex; gap: 8px; justify-content: center; margin-top: 10px;
+}
+.kf-social-btn {
+  width: 30px; height: 30px;
+  background: rgba(255,255,255,.07);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  transition: all .3s; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.1);
+}
+.kf-social-btn:hover {
+  background: rgba(126,217,87,.2);
+  border-color: rgba(126,217,87,.4);
+  transform: scale(1.15);
+}
+.kf-social-btn i { color: rgba(255,255,255,.6); font-size: .75rem; }
+
+/* AND divider */
+.dev-and {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding-top: 60px;
+}
+.dev-and-line { width: 1px; height: 50px; background: linear-gradient(to bottom, transparent, rgba(126,217,87,.3), transparent); }
+.dev-and-text {
+  font-family: var(--ff-head);
+  font-size: 1.1rem; font-weight: 700; color: rgba(255,255,255,.3);
+  font-style: italic;
+}
+
+.copyright { color: rgba(255,255,255,.3); font-size: .78rem; margin-top: 28px; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+.sr { opacity: 0; transform: translateY(40px); transition: opacity .7s ease, transform .7s ease; }
+.sr.visible { opacity: 1; transform: none; }
+.sr-left { opacity: 0; transform: translateX(-40px); transition: opacity .7s ease, transform .7s ease; }
+.sr-left.visible { opacity: 1; transform: none; }
+.sr-right { opacity: 0; transform: translateX(40px); transition: opacity .7s ease, transform .7s ease; }
+.sr-right.visible { opacity: 1; transform: none; }
+
+@media (max-width: 768px) {
+  .tip-float { display: none; }
+  .hero { padding-top: 40px; }
+  .dev-names { flex-direction: column; align-items: center; }
+  .dev-and { flex-direction: row; padding-top: 0; }
+  .dev-and-line { width: 40px; height: 1px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- CURSOR -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- PARTICLE CANVAS -->
+<canvas id="particleCanvas"></canvas>
+
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-noise"></div>
+  <div class="hero-glow"></div>
+  <div class="container" style="position:relative;z-index:2">
+    <div class="row align-items-center g-5">
+
+      <!-- LEFT -->
+      <div class="col-lg-6">
+        <div class="hero-badge">
+          <span style="width:8px;height:8px;background:var(--lime);border-radius:50%;animation:blink 1.5s infinite"></span>
+          AI-Powered Farming Intelligence
+        </div>
+        <h1 class="hero-title">
+          Grow Smarter<br>with <span class="accent">Crop</span><br>Recommender
+        </h1>
+        <p class="hero-sub">
+          Enter your soil & climate data once — our ML model instantly recommends the best crop for your land with 96%+ accuracy. Built for India's 140 million farmers.
+        </p>
+        <div class="hero-btns d-flex flex-wrap gap-3 mb-3">
+          {% if user.is_authenticated %}
+            <a href="" class="btn-hero-primary"><i class="fa-solid fa-wand-magic-sparkles"></i> Predict My Crop</a>
+            <a href="" class="btn-hero-outline"><i class="fa-solid fa-clock-rotate-left"></i> My History</a>
+          {% else %}
+            <a href="{% url 'recommender:signup' %}" class="btn-hero-primary"><i class="fa-solid fa-seedling"></i> Start For Free</a>
+            <a href="{% url 'recommender:login' %}" class="btn-hero-outline"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+          {% endif %}
+        </div>
+
+        <!-- Kissan ID badge -->
+        <div class="kissan-id-badge">
+          <div class="id-icon">🪪</div>
+          <div>
+            <div class="id-label" style="font-size:.7rem;font-weight:700;color:var(--gold);letter-spacing:2px;text-transform:uppercase">Kissan ID System</div>
+            <div class="id-val">Unique ID for every registered farmer</div>
+            <div class="id-text">Track predictions, history & analytics — all linked to your Kissan ID</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT - Image + Floating Card -->
+      <div class="col-lg-6 hero-card-float">
+        <div style="position:relative;max-width:440px;margin:0 auto">
+          <img src="{% static 'images/about.png' %}" alt="Smart Farming"
+               style="width:100%;max-width:340px;display:block;margin:0 auto 24px;
+                      filter:drop-shadow(0 20px 40px rgba(0,0,0,.5));
+                      animation:float 5s ease-in-out infinite;">
+        </div>
+        <div style="position:relative;max-width:440px;margin:0 auto">
+          <div class="floating-crop-card">
+            <div style="font-size:.75rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px">
+              🤖 AI Prediction Result
+            </div>
+            <div style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:14px">Top recommendations for your soil:</div>
+            <div class="crop-result-item">
+              <div class="crop-emoji">🌾</div>
+              <div style="flex:1">
+                <div class="crop-name-big">Rice (Paddy)</div>
+                <div class="crop-conf">96.4% confidence</div>
+                <div class="conf-bar"><div class="conf-fill" style="width:96%"></div></div>
+              </div>
+              <span style="background:var(--lime);color:var(--dark);border-radius:8px;padding:3px 10px;font-size:.72rem;font-weight:800">BEST</span>
+            </div>
+            <div class="crop-result-item">
+              <div class="crop-emoji">🌽</div>
+              <div style="flex:1">
+                <div class="crop-name-big">Maize</div>
+                <div class="crop-conf">84.1% confidence</div>
+                <div class="conf-bar"><div class="conf-fill" style="width:84%"></div></div>
+              </div>
+            </div>
+            <div class="crop-result-item">
+              <div class="crop-emoji">🫘</div>
+              <div style="flex:1">
+                <div class="crop-name-big">Chickpea</div>
+                <div class="crop-conf">76.8% confidence</div>
+                <div class="conf-bar"><div class="conf-fill" style="width:77%"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between;font-size:.78rem;color:rgba(255,255,255,.4)">
+              <span>📍 Analyzed: Odisha Region</span>
+              <span>⏱ 0.3s response</span>
+            </div>
+          </div>
+
+          <!-- Floating tip -->
+          <div class="tip-float">
+            <div class="tip-icon">💡</div>
+            <div>
+              <div class="tip-label">Kissan Tip</div>
+              <div class="tip-msg">Apply Zinc Sulphate 25 kg/ha for better paddy yield this season</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STATS BAR ═══ -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="row align-items-center text-center">
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-num" data-target="5000" data-suffix="K+">0</div>
+        <div class="stat-label">Farmers Registered</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-num" data-target="12000" data-suffix="+">0</div>
+        <div class="stat-label">Predictions Made</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-num" data-target="22" data-suffix="">0</div>
+        <div class="stat-label">Crops Supported</div>
+      </div>
+      <div class="col-6 col-md-3 stat-item">
+        <div class="stat-num" data-target="96.4" data-suffix="%">0</div>
+        <div class="stat-label">Model Accuracy</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FEATURE CARDS AUTO-SCROLL ═══ -->
+<section class="features-section">
+  <div class="container mb-5 sr">
+    <span class="section-eyebrow">What We Offer</span>
+    <h2 class="section-title">Everything a Farmer <span class="accent">Needs</span></h2>
+    <p class="section-sub">From AI predictions to weather alerts, pest control to nutrition data — all in one platform built for real farmers.</p>
+  </div>
+
+  <div class="features-track-wrap">
+    <div class="features-track" id="featTrack">
+      <!-- Cards repeated for infinite scroll effect -->
+      {% with cards="0,1,2,3,4,5,6,7,8,9,10,11" %}
+      {% endwith %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="how-section">
+  <div class="container">
+    <div class="text-center mb-5 sr">
+      <span class="section-eyebrow" style="background:rgba(126,217,87,.1);color:var(--lime)">Process</span>
+      <h2 class="section-title" style="color:#fff">How <span class="accent">Crop Recommender</span> Works</h2>
+    </div>
+    <div class="row g-4 position-relative">
+      <div class="col-md-3 sr" style="transition-delay:.1s">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-title">Register & Get Kissan ID</div>
+          <div class="step-desc">Create your free account and receive a unique Kissan ID that links all your farm data and predictions.</div>
+        </div>
+      </div>
+      <div class="col-md-3 sr" style="transition-delay:.2s">
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-title">Enter Soil & Climate Data</div>
+          <div class="step-desc">Input N, P, K levels, pH, temperature, humidity, rainfall from your field — takes under 60 seconds.</div>
+        </div>
+      </div>
+      <div class="col-md-3 sr" style="transition-delay:.3s">
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-title">AI Analyses Your Data</div>
+          <div class="step-desc">Our Random Forest ML model trained on 2,200 samples processes your input in milliseconds.</div>
+        </div>
+      </div>
+      <div class="col-md-3 sr" style="transition-delay:.4s">
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <div class="step-title">Get Crop + Full Analysis</div>
+          <div class="step-desc">See top 3 crop recommendations, pest alerts, monsoon forecast, nutrition data, and harvest guide.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ KISSAN TIPS ROW ═══ -->
+<section class="tips-section">
+  <div class="container">
+    <div class="text-center mb-5 sr">
+      <span class="section-eyebrow">Knowledge Base</span>
+      <h2 class="section-title">Kissan <span class="accent">Tips & Guidance</span></h2>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4 sr" style="transition-delay:.1s">
+        <div class="tip-card">
+          <div class="tip-card-icon">🧪</div>
+          <div class="tip-card-label">Soil Health Tip</div>
+          <div class="tip-card-text">Test soil pH every 2 years. Ideal range for most crops is 6.0–7.5. Apply lime if below 5.5, gypsum if above 8.0.</div>
+        </div>
+      </div>
+      <div class="col-md-4 sr" style="transition-delay:.2s">
+        <div class="tip-card">
+          <div class="tip-card-icon">💧</div>
+          <div class="tip-card-label">Water Management</div>
+          <div class="tip-card-text">Drip irrigation saves 40% water vs flood method. Install soil moisture sensors at 15 cm depth for precision watering.</div>
+        </div>
+      </div>
+      <div class="col-md-4 sr" style="transition-delay:.3s">
+        <div class="tip-card">
+          <div class="tip-card-icon">🌦️</div>
+          <div class="tip-card-label">Monsoon Alert</div>
+          <div class="tip-card-text">Check our real-time monsoon prediction before sowing. Kharif sowing window is June 5–25 for most Indian states.</div>
+        </div>
+      </div>
+      <div class="col-md-4 sr" style="transition-delay:.4s">
+        <div class="tip-card">
+          <div class="tip-card-icon">🐛</div>
+          <div class="tip-card-label">Pest Control</div>
+          <div class="tip-card-text">Use pheromone traps from day 30 after sowing. Early detection reduces pesticide use by 60% and saves crop losses.</div>
+        </div>
+      </div>
+      <div class="col-md-4 sr" style="transition-delay:.5s">
+        <div class="tip-card">
+          <div class="tip-card-icon">🌿</div>
+          <div class="tip-card-label">Organic Boost</div>
+          <div class="tip-card-text">Apply Trichoderma viride 4 g/kg seed before sowing. Prevents fungal diseases and promotes root growth naturally.</div>
+        </div>
+      </div>
+      <div class="col-md-4 sr" style="transition-delay:.6s">
+        <div class="tip-card">
+          <div class="tip-card-icon">📦</div>
+          <div class="tip-card-label">Storage Tip</div>
+          <div class="tip-card-text">Dry grains to 12–14% moisture before storage. Use aluminum phosphide tablets in airtight bins to prevent weevil damage.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CROP SHOWCASE AUTO-SCROLL ROW ═══ -->
+<section class="showcase-section">
+  <div class="container mb-4 sr">
+    <span class="section-eyebrow">Supported Crops</span>
+    <h2 class="section-title">All <span class="accent">22 Crops</span> Covered</h2>
+  </div>
+
+  <div style="overflow:hidden;mask-image:linear-gradient(90deg,transparent 0%,black 6%,black 94%,transparent 100%)">
+    <div class="crops-row-track" id="cropsRow1">
+      <!-- JS fills this -->
+    </div>
+    <div style="margin-top:14px">
+      <div class="crops-row-track reverse" id="cropsRow2"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TECHNOLOGY SECTION ═══ -->
+<section class="tech-section">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-5 sr-left">
+        <span class="section-eyebrow">Tech Stack</span>
+        <h2 class="section-title">Powered by <span class="accent">Modern</span> Technology</h2>
+        <p class="section-sub">Built on a robust ML pipeline and production-grade Django backend, designed to scale to millions of farmers.</p>
+      </div>
+      <div class="col-lg-7 sr-right">
+        <div class="d-flex flex-wrap gap-3" id="techGrid"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ KISSAN ID DEEP SECTION ═══ -->
+<section class="kissan-section">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6 sr-left">
+        <span class="section-eyebrow" style="background:rgba(245,200,66,.1);color:var(--gold)">Unique Identity</span>
+        <h2 class="section-title" style="color:#fff">Your <span style="color:var(--gold);font-style:italic">Kissan ID</span></h2>
+        <p class="section-sub" style="color:rgba(255,255,255,.6)">Every registered farmer gets a unique Kissan ID — your digital farming passport that links your identity, land records, predictions, and history in one place.</p>
+        <div class="d-flex flex-wrap gap-3 mt-4">
+          <a href="{% url 'recommender:signup' %}" class="btn-hero-primary"><i class="fa-solid fa-id-card"></i> Get Your Kissan ID Free</a>
+        </div>
+      </div>
+      <div class="col-lg-6 sr-right">
+        <div class="kissan-card">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px">
+            <div style="width:52px;height:52px;background:var(--gold);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🪪</div>
+            <div>
+              <div style="font-size:.72rem;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase">Kissan Digital ID</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#fff">Your Farming Passport</div>
+            </div>
+          </div>
+          <div class="id-display mb-4">KSN — 2024 — XXXX</div>
+          <div class="id-feature"><i class="fa-solid fa-check-circle"></i><span>Linked to your complete prediction history</span></div>
+          <div class="id-feature"><i class="fa-solid fa-check-circle"></i><span>Shareable with local agri extension officers</span></div>
+          <div class="id-feature"><i class="fa-solid fa-check-circle"></i><span>Access government scheme eligibility info</span></div>
+          <div class="id-feature"><i class="fa-solid fa-check-circle"></i><span>Secure login across all KisanAI devices</span></div>
+          <div class="id-feature"><i class="fa-solid fa-check-circle"></i><span>Sync farm data with state agriculture portals</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section class="testi-section">
+  <div class="container mb-5 sr">
+    <span class="section-eyebrow">Farmer Voices</span>
+    <h2 class="section-title">Trusted by Farmers <span class="accent">Across India</span></h2>
+  </div>
+  <div class="testi-track-wrap">
+    <div class="testi-track" id="testiTrack">
+      <!-- JS fills -->
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer-section">
+  <div class="container">
+    <div class="row g-5">
+      <div class="col-lg-4">
+        <div class="footer-logo">🌿 Crop <span>Recommender</span></div>
+        <div class="footer-tagline">AI-powered crop intelligence for every Indian farmer.</div>
+        <div class="d-flex gap-3 mt-4">
+          <div style="width:36px;height:36px;background:rgba(255,255,255,.08);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s" onmouseover="this.style.background='rgba(126,217,87,.2)'" onmouseout="this.style.background='rgba(255,255,255,.08)'"><i class="fa-brands fa-github" style="color:rgba(255,255,255,.6)"></i></div>
+          <div style="width:36px;height:36px;background:rgba(255,255,255,.08);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s" onmouseover="this.style.background='rgba(126,217,87,.2)'" onmouseout="this.style.background='rgba(255,255,255,.08)'"><i class="fa-brands fa-linkedin" style="color:rgba(255,255,255,.6)"></i></div>
+          <div style="width:36px;height:36px;background:rgba(255,255,255,.08);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s" onmouseover="this.style.background='rgba(126,217,87,.2)'" onmouseout="this.style.background='rgba(255,255,255,.08)'"><i class="fa-brands fa-twitter" style="color:rgba(255,255,255,.6)"></i></div>
+        </div>
+      </div>
+      <div class="col-lg-2 col-md-4">
+        <div class="footer-heading">Platform</div>
+        <a class="footer-link" href="">Crop Predictor</a>
+        <a class="footer-link" href="">Prediction History</a>
+        <a class="footer-link" href="">Crop Analysis</a>
+        <a class="footer-link" href="">Weather Alerts</a>
+      </div>
+      <div class="col-lg-2 col-md-4">
+        <div class="footer-heading">Crops</div>
+        <a class="footer-link" href="">Cereals</a>
+        <a class="footer-link" href="">Pulses</a>
+        <a class="footer-link" href="">Fruits</a>
+        <a class="footer-link" href="">Cash Crops</a>
+      </div>
+      <div class="col-lg-4 col-md-4">
+        <div class="footer-heading">Newsletter for Kissan</div>
+        <p style="color:rgba(255,255,255,.4);font-size:.85rem;margin-bottom:14px">Get weekly crop tips, weather alerts, and MSP updates directly.</p>
+        <div style="display:flex;gap:8px">
+          <input type="email" placeholder="your@email.com" style="flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:50px;padding:10px 18px;color:#fff;font-size:.88rem;outline:none" onfocus="this.style.borderColor='rgba(126,217,87,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.15)'">
+          <button style="background:var(--lime);color:var(--dark);border:none;border-radius:50px;padding:10px 20px;font-weight:700;font-size:.85rem;cursor:pointer;transition:all .3s" onmouseover="this.style.background='#a3f070'" onmouseout="this.style.background='var(--lime)'">Subscribe</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         KISSAN FRAME DEVELOPER CREDIT BAR
+    ════════════════════════════════════════ -->
+    <div class="credit-bar">
+      <div class="dev-title">Developed with ❤️ by</div>
+      <div class="dev-subtitle">The <span>KisanAI</span> Team</div>
+
+      <div class="dev-names">
+
+        <!-- ── DEVELOPER 1: Ashutosh Mishra ── -->
+        <div class="kissan-dev-card">
+          <div class="kissan-frame">
+            <!-- Hologram overlay -->
+            <div class="kf-hologram"></div>
+            <!-- Scan line -->
+            <div class="kf-scan"></div>
+
+            <!-- Header -->
+            <div class="kf-header">
+              <div class="kf-flag">🇮🇳</div>
+              <div class="kf-gov-text">
+                <div class="kf-gov-line1">KisanAI · Developer ID</div>
+                <div class="kf-gov-line2">Ministry of Agriculture & AI</div>
+              </div>
+              <div class="kf-emblem">🌾</div>
+            </div>
+
+            <!-- Photo -->
+            <div class="kf-photo-area">
+              <div class="kf-photo-wrap">
+                <!-- Replace src with actual photo path: {% static 'images/ashutosh.jpg' %} -->
+                <img src="{% static 'images/ashu45.jpeg' %}"
+                     alt="Ashutosh Mishra"
+                     class="kf-photo"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="kf-photo-placeholder" style="display:none">
+                  <div class="kf-initials">AM</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Name & Role -->
+            <div class="kf-info">
+              <div class="kf-name">Ashutosh Mishra</div>
+              <div class="kf-role-badge">🤖 ML Engineer & Backend Dev</div>
+            </div>
+
+            <!-- Kissan ID strip -->
+            <div class="kf-id-strip">
+              <span class="kf-id-label">Dev ID</span>
+              <span class="kf-id-value">KSN-DEV-001</span>
+            </div>
+
+            <!-- Barcode -->
+            <div class="kf-barcode">
+              <div class="kf-barcode-bars" id="barcode1"></div>
+              <div class="kf-ministry">KisanAI · Odisha · 2024</div>
+            </div>
+          </div>
+
+          <!-- Below card -->
+          <div class="kf-below">
+            <div class="kf-below-name">Ashutosh Mishra</div>
+            <div class="kf-below-role">ML Engineer & Backend Developer</div>
+            <div class="kf-socials">
+              <div class="kf-social-btn"><i class="fa-brands fa-github"></i></div>
+              <div class="kf-social-btn"><i class="fa-brands fa-linkedin"></i></div>
+              <div class="kf-social-btn"><i class="fa-solid fa-envelope"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AND divider -->
+        <div class="dev-and">
+          <div class="dev-and-line"></div>
+          <div class="dev-and-text">&amp;</div>
+          <div class="dev-and-line"></div>
+        </div>
+
+        <!-- ── DEVELOPER 2: Santosh Sahoo ── -->
+        <div class="kissan-dev-card">
+          <div class="kissan-frame">
+            <!-- Hologram overlay -->
+            <div class="kf-hologram"></div>
+            <!-- Scan line -->
+            <div class="kf-scan"></div>
+
+            <!-- Header -->
+            <div class="kf-header">
+              <div class="kf-flag">🇮🇳</div>
+              <div class="kf-gov-text">
+                <div class="kf-gov-line1">KisanAI · Developer ID</div>
+                <div class="kf-gov-line2">Ministry of Agriculture & AI</div>
+              </div>
+              <div class="kf-emblem">🌾</div>
+            </div>
+
+            <!-- Photo -->
+            <div class="kf-photo-area">
+              <div class="kf-photo-wrap">
+                <!-- Replace src with actual photo path: {% static 'images/santosh.jpg' %} -->
+                <img src="{% static 'images/santu67.jpeg' %}"
+                     alt="Santosh Sahoo"
+                     class="kf-photo"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="kf-photo-placeholder" style="display:none">
+                  <div class="kf-initials">SS</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Name & Role -->
+            <div class="kf-info">
+              <div class="kf-name">Santosh Sahoo</div>
+              <div class="kf-role-badge">🎨 Frontend Dev & UI Designer</div>
+            </div>
+
+            <!-- Kissan ID strip -->
+            <div class="kf-id-strip">
+              <span class="kf-id-label">Dev ID</span>
+              <span class="kf-id-value">KSN-DEV-002</span>
+            </div>
+
+            <!-- Barcode -->
+            <div class="kf-barcode">
+              <div class="kf-barcode-bars" id="barcode2"></div>
+              <div class="kf-ministry">KisanAI · Odisha · 2024</div>
+            </div>
+          </div>
+
+          <!-- Below card -->
+          <div class="kf-below">
+            <div class="kf-below-name">Santosh Sahoo</div>
+            <div class="kf-below-role">Frontend Developer & UI Designer</div>
+            <div class="kf-socials">
+              <div class="kf-social-btn"><i class="fa-brands fa-github"></i></div>
+              <div class="kf-social-btn"><i class="fa-brands fa-linkedin"></i></div>
+              <div class="kf-social-btn"><i class="fa-solid fa-envelope"></i></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /dev-names -->
+
+      <div class="copyright">© 2024 KisanAI · Smart Crop Recommendation System · Built for India's Farmers</div>
+    </div><!-- /credit-bar -->
+
+  </div>
+</footer>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ═══════════════════════════════════════════
+   PARTICLE CANVAS
+═══════════════════════════════════════════ */
+const canvas = document.getElementById('particleCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+resize(); window.addEventListener('resize', resize);
+function Particle() {
+  this.x = Math.random()*W; this.y = Math.random()*H;
+  this.r = Math.random()*2+.5;
+  this.vx = (Math.random()-.5)*.4; this.vy = (Math.random()-.5)*.4;
+  this.alpha = Math.random()*.5+.2;
+}
+for(let i=0;i<80;i++) particles.push(new Particle());
+function drawParticles() {
+  ctx.clearRect(0,0,W,H);
+  particles.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle = `rgba(126,217,87,${p.alpha})`;
+    ctx.fill();
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>W) p.vx*=-1;
+    if(p.y<0||p.y>H) p.vy*=-1;
+  });
+  // draw lines
+  for(let i=0;i<particles.length;i++) {
+    for(let j=i+1;j<particles.length;j++) {
+      let dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+      let dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<100) {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(126,217,87,${.15*(1-dist/100)})`;
+        ctx.lineWidth = .5;
+        ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* ═══════════════════════════════════════════
+   CUSTOM CURSOR
+═══════════════════════════════════════════ */
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX+'px'; cur.style.top = e.clientY+'px';
+  ring.style.left = e.clientX+'px'; ring.style.top = e.clientY+'px';
+});
+document.querySelectorAll('a,button,[class*="card"],[class*="pill"],[class*="btn"]').forEach(el => {
+  el.addEventListener('mouseenter', () => { cur.style.width='22px'; cur.style.height='22px'; ring.style.width='52px'; ring.style.height='52px'; });
+  el.addEventListener('mouseleave', () => { cur.style.width='14px'; cur.style.height='14px'; ring.style.width='38px'; ring.style.height='38px'; });
+});
+
+
+/* ═══════════════════════════════════════════
+   ANIMATED COUNTER
+═══════════════════════════════════════════ */
+function animateCounter(el) {
+  const target = parseFloat(el.dataset.target);
+  const suffix = el.dataset.suffix;
+  const isFloat = target % 1 !== 0;
+  let current = 0;
+  const duration = 2200;
+  const increment = target / (duration / 16);
+  const timer = setInterval(() => {
+    current = Math.min(current + increment, target);
+    el.textContent = (isFloat ? current.toFixed(1) : Math.floor(current).toLocaleString('en-IN')) + suffix;
+    if (current >= target) clearInterval(timer);
+  }, 16);
+}
+
+/* ═══════════════════════════════════════════
+   SCROLL REVEAL + COUNTER TRIGGER
+═══════════════════════════════════════════ */
+const revealObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.12 });
+document.querySelectorAll('.sr,.sr-left,.sr-right').forEach(el => revealObs.observe(el));
+
+const counterObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.querySelectorAll('[data-target]').forEach(animateCounter);
+      counterObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.4 });
+const statsBar = document.querySelector('.stats-bar');
+if(statsBar) counterObs.observe(statsBar);
+
+/* ═══════════════════════════════════════════
+   FEATURE CARDS DATA + BUILD TRACK
+═══════════════════════════════════════════ */
+const features = [
+  { icon:'🤖', title:'ML Crop Prediction', desc:'Random Forest model trained on 2,200+ samples with 96.4% accuracy for 22 crop classes.' },
+  { icon:'🗺️', title:'India Production Map', desc:'Interactive Leaflet map showing high-yield zones with red markers for each crop.' },
+  { icon:'🌦️', title:'Monsoon Prediction', desc:'Monthly rainfall vs crop requirement chart with cyclone red alerts for coastal farmers.' },
+  { icon:'🐛', title:'Pest & Insect Guide', desc:'Detailed guide on 4+ major pests per crop with control methods and pesticide dosages.' },
+  { icon:'🧬', title:'Crop Evolution Timeline', desc:'5-step historical evolution for every crop — from ancient domestication to modern varieties.' },
+  { icon:'🥗', title:'Nutritional Analysis', desc:'Pie chart, bar chart & table for protein, vitamins, calcium, potassium per 100g.' },
+  { icon:'🪪', title:'Kissan ID System', desc:'Unique farmer ID that links predictions, history, and land data all in one secure profile.' },
+  { icon:'📊', title:'State-wise Charts', desc:'Pie chart + horizontal bar showing production share % for every state in India.' },
+  { icon:'🌾', title:'Harvest Guide', desc:'Best practices, optimal timing, radar chart comparing early vs optimal vs late harvest.' },
+  { icon:'💊', title:'Pesticide Database', desc:'6 specific pesticides per crop with dosage, application method, and target pest details.' },
+  { icon:'🔔', title:'Red Cyclone Alerts', desc:'Real-time cyclone warnings for coastal areas showing risk to standing crops.' },
+  { icon:'📈', title:'Growth Timeline Chart', desc:'Monthly animated line chart showing intensity of crop growth across all 12 months.' },
+];
+const track = document.getElementById('featTrack');
+const doubled = [...features, ...features]; // duplicate for infinite
+doubled.forEach(f => {
+  track.innerHTML += `
+    <div class="feat-card">
+      <div class="feat-icon">${f.icon}</div>
+      <div class="feat-title">${f.title}</div>
+      <div class="feat-desc">${f.desc}</div>
+    </div>`;
+});
+
+/* ═══════════════════════════════════════════
+   CROP PILLS ROWS
+═══════════════════════════════════════════ */
+const allCrops = [
+  ['🌾','Rice'],['🌽','Maize'],['🫘','Chickpea'],['🫘','Kidney Beans'],['🌿','Pigeon Peas'],
+  ['🌱','Moth Beans'],['🟢','Mung Bean'],['⚫','Black Gram'],['🟤','Lentil'],['🔴','Pomegranate'],
+  ['🍌','Banana'],['🥭','Mango'],['🍇','Grapes'],['🍉','Watermelon'],['🍈','Muskmelon'],
+  ['🍎','Apple'],['🍊','Orange'],['🧡','Papaya'],['🥥','Coconut'],['☁️','Cotton'],['🟡','Jute'],['☕','Coffee']
+];
+const r1 = document.getElementById('cropsRow1');
+const r2 = document.getElementById('cropsRow2');
+[...allCrops,...allCrops].forEach(([em,nm],i) => {
+  const pill = `<div class="crop-pill"><span class="cp-emoji">${em}</span><span class="cp-name">${nm}</span></div>`;
+  if(i < allCrops.length*2) r1.innerHTML += pill;
+});
+[...allCrops,...allCrops].reverse().forEach(([em,nm]) => {
+  r2.innerHTML += `<div class="crop-pill"><span class="cp-emoji">${em}</span><span class="cp-name">${nm}</span></div>`;
+});
+
+/* ═══════════════════════════════════════════
+   TECHNOLOGY CHIPS
+═══════════════════════════════════════════ */
+const techs = [
+  { name:'Python 3.11', color:'#3776ab', icon:'🐍' },
+  { name:'Django 4.x', color:'#092e20', icon:'🦎' },
+  { name:'Scikit-learn', color:'#f89939', icon:'🤖' },
+  { name:'Random Forest', color:'#2d8a52', icon:'🌲' },
+  { name:'Pandas', color:'#150458', icon:'🐼' },
+  { name:'NumPy', color:'#4dabcf', icon:'🔢' },
+  { name:'Leaflet.js', color:'#199900', icon:'🗺️' },
+  { name:'Chart.js', color:'#ff6384', icon:'📊' },
+  { name:'Bootstrap 5', color:'#7952b3', icon:'🎨' },
+  { name:'SQLite / PostgreSQL', color:'#336791', icon:'🗄️' },
+  { name:'HTML5 + CSS3', color:'#e34c26', icon:'💻' },
+  { name:'JavaScript ES6', color:'#f0db4f', icon:'⚡' },
+];
+const tg = document.getElementById('techGrid');
+techs.forEach(t => {
+  tg.innerHTML += `
+    <div class="tech-chip">
+      <span>${t.icon}</span>
+      <span style="font-size:.88rem">${t.name}</span>
+      <span style="width:8px;height:8px;border-radius:50%;background:${t.color};display:inline-block;margin-left:2px"></span>
+    </div>`;
+});
+
+/* ═══════════════════════════════════════════
+   TESTIMONIALS
+═══════════════════════════════════════════ */
+const testimonials = [
+  { initials:'RK', name:'Rajesh Kumar', loc:'Varanasi, UP', stars:5, text:'"KisanAI told me to grow paddy instead of wheat this season based on my soil data. Result: 40% higher income. I tell every farmer in my village about this app."' },
+  { initials:'SP', name:'Suresh Patel', loc:'Nashik, Maharashtra', stars:5, text:'"The pomegranate pest guide was lifesaving. Detected butterfly borer early, used the right pesticide, saved my entire orchard."' },
+  { initials:'MR', name:'Meena Raju', loc:'Tirupur, Tamil Nadu', stars:5, text:'"Banana section shows everything — harvest time, nutrition, how many days after sowing. Very easy to understand even on mobile."' },
+  { initials:'BM', name:'Bikash Mohanty', loc:'Bhubaneswar, Odisha', stars:5, text:'"Cyclone alert saved me. KisanAI warned about storm 5 days before it hit. I harvested my paddy early and avoided full loss."' },
+  { initials:'DS', name:'Deepak Singh', loc:'Indore, MP', stars:5, text:'"The state-wise map is amazing. I can see exactly which district in Rajasthan grows the most chickpea. Helps me plan buying from the right place."' },
+  { initials:'AP', name:'Anita Pandey', loc:'Lucknow, UP', stars:5, text:'"The Kissan ID system is my farming passport. All my 3 years of predictions are saved. My agriculture officer can see my full history on one page."' },
+];
+const tt = document.getElementById('testiTrack');
+[...testimonials,...testimonials].forEach(t => {
+  tt.innerHTML += `
+    <div class="testi-card">
+      <div class="testi-stars">${'★'.repeat(t.stars)}</div>
+      <div class="testi-text">${t.text}</div>
+      <div class="testi-author">
+        <div class="testi-avatar">${t.initials}</div>
+        <div>
+          <div class="testi-name">${t.name}</div>
+          <div class="testi-loc">📍 ${t.loc}</div>
+        </div>
+      </div>
+    </div>`;
+});
+
+/* ═══════════════════════════════════════════
+   GENERATE BARCODE BARS
+═══════════════════════════════════════════ */
+function generateBarcode(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const barHeights = [12,8,16,6,14,10,18,8,12,6,16,10,14,8,18,6,12,10,16,8,14,6,18,10,12,8,16,6];
+  barHeights.forEach(h => {
+    const bar = document.createElement('div');
+    bar.className = 'kf-bar';
+    bar.style.height = h + 'px';
+    bar.style.opacity = (0.3 + Math.random() * 0.5).toFixed(2);
+    container.appendChild(bar);
+  });
+}
+generateBarcode('barcode1');
+generateBarcode('barcode2');
+</script>
+{% endblock %}

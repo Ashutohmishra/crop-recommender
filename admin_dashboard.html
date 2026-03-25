@@ -1,0 +1,696 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Admin Dashboard — Crop Recommender{% endblock %}
+
+{% block extra_css %}
+<style>
+
+/* =========================================================
+   PAGE
+========================================================= */
+.dash-page {
+  padding: 2rem 0 4rem;
+  animation: pageIn .5s ease both;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  animation: fadeDown .5s ease both;
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dash-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase;
+  color: var(--green-base);
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  padding: .28rem .85rem;
+  margin-bottom: .55rem;
+}
+.dash-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .02em;
+  line-height: 1.15;
+  margin: 0;
+}
+.dash-title em { font-style: italic; color: var(--green-base); font-weight: 400; }
+
+.btn-manage {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  color: var(--white);
+  border: none;
+  border-radius: 9px;
+  padding: .6rem 1.4rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(27,67,50,.28);
+  transition: transform .22s, box-shadow .22s;
+  position: relative; overflow: hidden;
+}
+.btn-manage::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-manage:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(27,67,50,.38);
+  color: var(--white);
+}
+
+/* =========================================================
+   STAT CARDS
+========================================================= */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 576px) { .stat-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) and (min-width: 577px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
+
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  padding: 1.4rem 1.2rem;
+  box-shadow: 0 3px 18px rgba(27,67,50,.08);
+  position: relative;
+  overflow: hidden;
+  transition: transform .28s, box-shadow .28s;
+  animation: cardRise .5s ease both;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--green-dark), var(--green-light));
+}
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 36px rgba(27,67,50,.15);
+}
+.stat-card:nth-child(1) { animation-delay: .06s; }
+.stat-card:nth-child(2) { animation-delay: .12s; }
+.stat-card:nth-child(3) { animation-delay: .18s; }
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.stat-icon {
+  width: 50px; height: 50px;
+  border-radius: 12px;
+  background: var(--green-mist);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  color: var(--green-dark);
+  flex-shrink: 0;
+  transition: transform .28s;
+}
+.stat-card:hover .stat-icon { transform: scale(1.12) rotate(-5deg); }
+
+.stat-info { flex: 1; min-width: 0; }
+.stat-label {
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-soft); margin-bottom: .25rem;
+}
+.stat-number {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2rem; font-weight: 700;
+  color: var(--green-dark); line-height: 1;
+}
+.stat-crop {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.3rem; font-weight: 700;
+  color: var(--green-dark); line-height: 1.2;
+}
+
+/* =========================================================
+   SECTION CARDS (charts / tables)
+========================================================= */
+.dash-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  box-shadow: 0 3px 18px rgba(27,67,50,.07);
+  overflow: hidden;
+  transition: box-shadow .28s;
+  animation: cardRise .5s ease both;
+}
+.dash-card:hover { box-shadow: 0 8px 32px rgba(27,67,50,.13); }
+
+.dash-card-header {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  padding: .9rem 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.dash-card-header h5 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem; font-weight: 600;
+  color: var(--white); letter-spacing: .04em; margin: 0;
+  display: flex; align-items: center; gap: .5rem;
+}
+.dash-card-header small {
+  font-size: .7rem; color: rgba(255,255,255,.65); letter-spacing: .04em;
+}
+.dash-card-body { padding: 1.2rem; }
+
+.chart-wrap { position: relative; height: 260px; width: 100%; }
+
+/* =========================================================
+   PRICE GRID
+========================================================= */
+.prices-scroll {
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--green-pale) transparent;
+}
+.prices-scroll::-webkit-scrollbar { width: 4px; }
+.prices-scroll::-webkit-scrollbar-thumb { background: var(--green-pale); border-radius: 2px; }
+
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .65rem;
+}
+@media (max-width: 500px) { .price-grid { grid-template-columns: 1fr 1fr; } }
+
+.price-tile {
+  background: var(--off-white);
+  border: 1px solid var(--green-pale);
+  border-radius: 10px;
+  padding: .75rem .6rem;
+  text-align: center;
+  transition: transform .22s, box-shadow .22s, background .22s;
+  animation: tileIn .35s ease both;
+}
+.price-tile:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 6px 18px rgba(27,67,50,.13);
+  background: var(--white);
+}
+@keyframes tileIn {
+  from { opacity: 0; transform: scale(.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* stagger price tiles */
+.price-tile:nth-child(1)  { animation-delay: .04s; }
+.price-tile:nth-child(2)  { animation-delay: .06s; }
+.price-tile:nth-child(3)  { animation-delay: .08s; }
+.price-tile:nth-child(4)  { animation-delay: .10s; }
+.price-tile:nth-child(5)  { animation-delay: .12s; }
+.price-tile:nth-child(6)  { animation-delay: .14s; }
+.price-tile:nth-child(7)  { animation-delay: .16s; }
+.price-tile:nth-child(8)  { animation-delay: .18s; }
+.price-tile:nth-child(9)  { animation-delay: .20s; }
+.price-tile:nth-child(10) { animation-delay: .22s; }
+.price-tile:nth-child(11) { animation-delay: .24s; }
+.price-tile:nth-child(12) { animation-delay: .26s; }
+
+.price-crop {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: .95rem; font-weight: 700;
+  color: var(--green-dark); margin-bottom: .2rem;
+}
+.price-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.25rem; font-weight: 700;
+  color: var(--text-dark); line-height: 1;
+}
+.price-unit { font-size: .62rem; color: var(--text-soft); letter-spacing: .04em; }
+.price-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .68rem; font-weight: 700;
+  margin-top: .3rem;
+  border-radius: 10px;
+  padding: .15rem .5rem;
+}
+.price-trend.up   { background: #e8f5e9; color: #2e7d32; }
+.price-trend.down { background: #ffebee; color: #c62828; }
+
+/* =========================================================
+   LIVE INDICATOR DOT
+========================================================= */
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(255,255,255,.75);
+}
+.live-dot::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green-light);
+  animation: dotBlink 1.8s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes dotBlink {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .3; transform: scale(.6); }
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash-page">
+<div class="container-fluid" style="max-width:1140px">
+
+  <!-- PAGE HEADER -->
+  <div class="dash-header">
+    <div>
+      <div class="dash-eyebrow"><i class="fa-solid fa-gauge-high"></i> Administration</div>
+      <h1 class="dash-title">Admin <em>Overview</em></h1>
+    </div>
+    <a href="{% url 'recommender:user_view' %}" class="btn-manage">
+      <i class="fa-solid fa-users"></i> Manage Users
+    </a>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-card-inner">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">Total Users</div>
+          <div class="stat-number" data-target="{{ user_count|default:0 }}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-inner">
+        <div class="stat-icon"><i class="fa-solid fa-seedling"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">Total Predictions</div>
+          <div class="stat-number" data-target="{{ total_predictions|default:0 }}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-inner">
+        <div class="stat-icon" style="background:#fff8e1;color:#e65100"><i class="fa-solid fa-crown"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">Top Crop</div>
+          <div class="stat-crop">
+            {% if crop_data %}{{ crop_data.0.0|default:"—" }}{% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="row g-3 mb-3">
+
+    <div class="col-lg-6">
+      <div class="dash-card" style="animation-delay:.22s">
+        <div class="dash-card-header">
+          <h5><i class="fa-solid fa-chart-line"></i> Predictions — Last 7 Days</h5>
+          <div class="live-dot">Live</div>
+        </div>
+        <div class="dash-card-body">
+          <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="dash-card" style="animation-delay:.28s">
+        <div class="dash-card-header">
+          <h5><i class="fa-solid fa-chart-bar"></i> Crop Ranking</h5>
+        </div>
+        <div class="dash-card-body">
+          <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PRICES + MONSOON ROW -->
+  <div class="row g-3">
+
+    <!-- MANDI PRICES -->
+    <div class="col-lg-7">
+      <div class="dash-card" style="animation-delay:.34s">
+        <div class="dash-card-header">
+          <h5><i class="fa-solid fa-indian-rupee-sign"></i> Live Mandi Prices</h5>
+          <small>₹/quintal &nbsp;·&nbsp; Updated 19 Mar 2026</small>
+        </div>
+        <div class="dash-card-body">
+          <div class="prices-scroll">
+            <div class="price-grid" id="priceGrid">
+
+              {% with crops_prices="Rice:4850:up:+1.2%,Maize:1872:down:-0.8%,Chickpea:4883:up:+2.1%,Kidneybeans:8200:up:+0.9%,Pigeonpeas:5500:up:+3.4%,Mothbeans:6200:down:-1.1%,Mungbean:7100:up:+1.8%,Blackgram:6100:down:-0.5%,Lentil:6700:up:+2.3%,Pomegranate:10500:up:+4.1%,Banana:2375:down:-1.5%,Mango:6083:up:+0.7%,Grapes:9500:up:+3.2%,Watermelon:1200:down:-2.0%,Muskmelon:1600:up:+1.4%,Apple:11500:up:+2.8%,Orange:4800:down:-1.3%,Papaya:2900:up:+0.6%,Coconut:5090:up:+1.9%,Cotton:6555:up:+2.7%,Jute:5700:up:+1.5%,Coffee:21500:down:-0.4%" %}
+
+                <!-- Rice -->
+                <div class="price-tile">
+                  <div class="price-crop">Rice</div>
+                  <div class="price-num" data-target="4850">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +1.2%</div>
+                </div>
+                <!-- Maize -->
+                <div class="price-tile">
+                  <div class="price-crop">Maize</div>
+                  <div class="price-num" data-target="1872">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -0.8%</div>
+                </div>
+                <!-- Chickpea -->
+                <div class="price-tile">
+                  <div class="price-crop">Chickpea</div>
+                  <div class="price-num" data-target="4883">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +2.1%</div>
+                </div>
+                <!-- Kidneybeans -->
+                <div class="price-tile">
+                  <div class="price-crop">Kidneybeans</div>
+                  <div class="price-num" data-target="8200">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +0.9%</div>
+                </div>
+                <!-- Pigeonpeas -->
+                <div class="price-tile">
+                  <div class="price-crop">Pigeonpeas</div>
+                  <div class="price-num" data-target="5500">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +3.4%</div>
+                </div>
+                <!-- Mothbeans -->
+                <div class="price-tile">
+                  <div class="price-crop">Mothbeans</div>
+                  <div class="price-num" data-target="6200">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -1.1%</div>
+                </div>
+                <!-- Mungbean -->
+                <div class="price-tile">
+                  <div class="price-crop">Mungbean</div>
+                  <div class="price-num" data-target="7100">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +1.8%</div>
+                </div>
+                <!-- Blackgram -->
+                <div class="price-tile">
+                  <div class="price-crop">Blackgram</div>
+                  <div class="price-num" data-target="6100">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -0.5%</div>
+                </div>
+                <!-- Lentil -->
+                <div class="price-tile">
+                  <div class="price-crop">Lentil</div>
+                  <div class="price-num" data-target="6700">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +2.3%</div>
+                </div>
+                <!-- Pomegranate -->
+                <div class="price-tile">
+                  <div class="price-crop">Pomegranate</div>
+                  <div class="price-num" data-target="10500">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +4.1%</div>
+                </div>
+                <!-- Banana -->
+                <div class="price-tile">
+                  <div class="price-crop">Banana</div>
+                  <div class="price-num" data-target="2375">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -1.5%</div>
+                </div>
+                <!-- Mango -->
+                <div class="price-tile">
+                  <div class="price-crop">Mango</div>
+                  <div class="price-num" data-target="6083">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +0.7%</div>
+                </div>
+                <!-- Grapes -->
+                <div class="price-tile">
+                  <div class="price-crop">Grapes</div>
+                  <div class="price-num" data-target="9500">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +3.2%</div>
+                </div>
+                <!-- Watermelon -->
+                <div class="price-tile">
+                  <div class="price-crop">Watermelon</div>
+                  <div class="price-num" data-target="1200">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -2.0%</div>
+                </div>
+                <!-- Muskmelon -->
+                <div class="price-tile">
+                  <div class="price-crop">Muskmelon</div>
+                  <div class="price-num" data-target="1600">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +1.4%</div>
+                </div>
+                <!-- Apple -->
+                <div class="price-tile">
+                  <div class="price-crop">Apple</div>
+                  <div class="price-num" data-target="11500">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +2.8%</div>
+                </div>
+                <!-- Orange -->
+                <div class="price-tile">
+                  <div class="price-crop">Orange</div>
+                  <div class="price-num" data-target="4800">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -1.3%</div>
+                </div>
+                <!-- Papaya -->
+                <div class="price-tile">
+                  <div class="price-crop">Papaya</div>
+                  <div class="price-num" data-target="2900">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +0.6%</div>
+                </div>
+                <!-- Coconut -->
+                <div class="price-tile">
+                  <div class="price-crop">Coconut</div>
+                  <div class="price-num" data-target="5090">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +1.9%</div>
+                </div>
+                <!-- Cotton -->
+                <div class="price-tile">
+                  <div class="price-crop">Cotton</div>
+                  <div class="price-num" data-target="6555">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +2.7%</div>
+                </div>
+                <!-- Jute -->
+                <div class="price-tile">
+                  <div class="price-crop">Jute</div>
+                  <div class="price-num" data-target="5700">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend up"><i class="fa-solid fa-arrow-trend-up"></i> +1.5%</div>
+                </div>
+                <!-- Coffee -->
+                <div class="price-tile">
+                  <div class="price-crop">Coffee</div>
+                  <div class="price-num" data-target="21500">0</div>
+                  <div class="price-unit">₹ / quintal</div>
+                  <div class="price-trend down"><i class="fa-solid fa-arrow-trend-down"></i> -0.4%</div>
+                </div>
+
+              {% endwith %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONSOON CHART -->
+    <div class="col-lg-5">
+      <div class="dash-card h-100" style="animation-delay:.40s">
+        <div class="dash-card-header">
+          <h5><i class="fa-solid fa-cloud-sun-rain"></i> Monsoon 2026 Growth Potential</h5>
+          <small>Index % · IMD Forecast</small>
+        </div>
+        <div class="dash-card-body">
+          <div class="chart-wrap"><canvas id="monsoonChart"></canvas></div>
+          <p style="font-size:.7rem;color:var(--text-soft);text-align:center;margin-top:.5rem;letter-spacing:.04em">
+            Based on IMD above-normal monsoon forecast + water requirement index
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row -->
+</div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<script>
+// ── Count-up animation ───────────────────────────────────
+function animateValue(el, start, end, duration) {
+  let t0 = null;
+  const step = ts => {
+    if (!t0) t0 = ts;
+    const p = Math.min((ts - t0) / duration, 1);
+    el.textContent = Math.floor(p * (end - start) + start).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-target]').forEach(el => {
+    const target = parseInt(el.getAttribute('data-target')) || 0;
+    if (target > 0) animateValue(el, 0, target, 1600);
+    else el.textContent = '0';
+  });
+});
+
+// ── Chart defaults ────────────────────────────────────────
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = '#5a7f6a';
+
+// ── Line Chart ────────────────────────────────────────────
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: {{ dates|safe|default:"['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" }},
+    datasets: [{
+      label: 'Predictions',
+      data:  {{ last_7_days|safe|default:"[12, 19, 8, 15, 22, 17, 31]" }},
+      borderColor: '#2d6a4f',
+      backgroundColor: 'rgba(45,106,79,.1)',
+      borderWidth: 2.5,
+      tension: .38,
+      pointBackgroundColor: '#1b4332',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { font: { size: 12 } } },
+      tooltip: { backgroundColor: '#1b4332', padding: 10 }
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#d8f3dc' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// ── Bar Chart (crop ranking) ──────────────────────────────
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: [{% for crop, count in crop_data %}"{{ crop|escapejs }}",{% empty %}"No data"{% endfor %}],
+    datasets: [{
+      label: 'Count',
+      data:  [{% for crop, count in crop_data %}{{ count }},{% empty %}0{% endfor %}],
+      backgroundColor: ['#1b4332','#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2','#b7e4c7','#d8f3dc'],
+      borderRadius: 5,
+      borderWidth: 0
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2d6a4f', padding: 10 } },
+    scales: {
+      x: { beginAtZero: true, grid: { color: '#d8f3dc' } },
+      y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' } } }
+    }
+  }
+});
+
+// ── Monsoon Chart ─────────────────────────────────────────
+new Chart(document.getElementById('monsoonChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Rice','Maize','Cotton','Jute','Pigeonpeas','Chickpea','Mungbean','Blackgram'],
+    datasets: [{
+      label: 'Growth Index (%)',
+      data: [95, 88, 85, 82, 78, 75, 72, 70],
+      backgroundColor: [
+        '#1b4332','#2d6a4f','#40916c','#52b788',
+        '#74c69d','#95d5b2','#b7e4c7','#d8f3dc'
+      ],
+      borderRadius: 6, borderWidth: 0
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1b4332', padding: 10,
+        callbacks: { label: ctx => ctx.raw + '% expected growth' }
+      }
+    },
+    scales: {
+      x: { beginAtZero: true, max: 100, grid: { color: '#d8f3dc' }, ticks: { stepSize: 25 } },
+      y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' } } }
+    }
+  }
+});
+</script>
+
+{% endblock %}

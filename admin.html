@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Admin Login — Crop Recommender{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+
+/* =========================================================
+   PAGE
+========================================================= */
+.admin-page {
+  min-height: 78vh;
+  display: flex;
+  align-items: center;
+  padding: 2rem 0 3rem;
+  animation: pageIn .5s ease both;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   MAIN CARD
+========================================================= */
+.admin-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  box-shadow: 0 8px 52px rgba(27,67,50,.15);
+  overflow: hidden;
+  display: flex;
+  min-height: 500px;
+  animation: cardRise .6s .08s ease both;
+}
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(24px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* =========================================================
+   LEFT PANEL — IMAGE
+========================================================= */
+.admin-left {
+  flex: 0 0 45%;
+  position: relative;
+  background:
+    linear-gradient(180deg,
+      rgba(27,67,50,.22) 0%,
+      rgba(27,67,50,.46) 52%,
+      rgba(27,67,50,.88) 100%),
+    url("{% static 'images/carousel1.png' %}") center/cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 2.5rem;
+  overflow: hidden;
+}
+
+/* Breathing rings */
+.admin-left .ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.admin-left .ring-1 {
+  width: 240px; height: 240px;
+  top: -70px; right: -70px;
+  background: rgba(116,198,157,.1);
+  animation: breathe 5.5s ease-in-out infinite;
+}
+.admin-left .ring-2 {
+  width: 140px; height: 140px;
+  top: -28px; right: -28px;
+  background: rgba(116,198,157,.08);
+  animation: breathe 5.5s 1.2s ease-in-out infinite;
+}
+.admin-left .ring-3 {
+  width: 120px; height: 120px;
+  bottom: 60px; left: -40px;
+  background: rgba(116,198,157,.07);
+  animation: breathe 7s 2s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100% { transform: scale(1);    opacity: .6; }
+  50%      { transform: scale(1.12); opacity: 1;  }
+}
+
+/* Shimmer top strip */
+.left-shimmer {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent, var(--green-light), #fff, var(--green-light), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3.5s ease-in-out infinite;
+  opacity: .5;
+}
+@keyframes shimmer {
+  0%,100% { background-position: 0%   50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* Admin shield icon — centre of image */
+.shield-emblem {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.12);
+  border: 2px solid rgba(255,255,255,.25);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2rem;
+  color: rgba(255,255,255,.9);
+  animation: emblemPulse 3s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(116,198,157,.4);
+}
+@keyframes emblemPulse {
+  0%,100% { box-shadow: 0 0 0  0   rgba(116,198,157,.4); transform: translate(-50%,-60%) scale(1);   }
+  50%      { box-shadow: 0 0 0 18px rgba(116,198,157,0);  transform: translate(-50%,-60%) scale(1.05); }
+}
+
+/* Brand */
+.left-brand {
+  position: absolute;
+  top: 2rem; left: 2.5rem;
+  display: flex; align-items: center; gap: .5rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem; font-weight: 700;
+  color: rgba(255,255,255,.92);
+  letter-spacing: .05em;
+  z-index: 2;
+  animation: fadeDown .55s .2s ease both;
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.left-brand .brand-icon {
+  color: var(--green-light);
+  animation: sway 3.8s ease-in-out infinite;
+  display: inline-block;
+  transform-origin: bottom center;
+}
+@keyframes sway {
+  0%,100% { transform: rotate(-7deg); }
+  50%      { transform: rotate( 7deg); }
+}
+
+/* Bottom content */
+.left-content {
+  position: relative; z-index: 2;
+  animation: fadeUp .55s .3s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.left-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.85rem; font-weight: 700;
+  color: #fff; letter-spacing: .03em; line-height: 1.2;
+  margin-bottom: .45rem;
+}
+.left-heading em { font-style: italic; color: var(--green-light); font-weight: 400; }
+.left-sub {
+  font-size: .8rem; color: rgba(255,255,255,.62);
+  line-height: 1.55; margin-bottom: 1.2rem;
+}
+
+.admin-feat-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.admin-feat-list li {
+  display: flex; align-items: center; gap: .6rem;
+  font-size: .79rem; color: rgba(255,255,255,.82);
+  animation: featureIn .4s ease both;
+}
+.admin-feat-list li:nth-child(1) { animation-delay: .4s; }
+.admin-feat-list li:nth-child(2) { animation-delay: .5s; }
+.admin-feat-list li:nth-child(3) { animation-delay: .6s; }
+.admin-feat-list li:nth-child(4) { animation-delay: .7s; }
+@keyframes featureIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.feat-dot {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(116,198,157,.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .58rem; color: var(--green-light); flex-shrink: 0;
+}
+
+/* =========================================================
+   RIGHT PANEL — FORM
+========================================================= */
+.admin-right {
+  flex: 1;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 3rem 2.8rem;
+  animation: fadeRight .6s .1s ease both;
+}
+@keyframes fadeRight {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.form-eyebrow {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--green-base);
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  padding: .25rem .75rem; margin-bottom: .7rem;
+}
+
+.form-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.9rem; font-weight: 700;
+  color: var(--green-dark); letter-spacing: .02em;
+  margin-bottom: .2rem; line-height: 1.15;
+}
+.form-title em { font-style: italic; color: var(--green-base); font-weight: 400; }
+
+.form-desc { font-size: .81rem; color: var(--text-soft); margin-bottom: 1.6rem; }
+
+/* Admin badge strip */
+.admin-badge-strip {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: linear-gradient(135deg, #1a2e22, var(--green-dark));
+  border-radius: 10px;
+  padding: .65rem 1rem;
+  margin-bottom: 1.4rem;
+  animation: fieldIn .4s .15s ease both;
+}
+.admin-badge-strip i { color: var(--green-light); font-size: .9rem; }
+.admin-badge-strip span {
+  font-size: .75rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(255,255,255,.85);
+}
+.admin-badge-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green-light);
+  margin-left: auto;
+  animation: dotBlink 1.8s ease-in-out infinite;
+}
+@keyframes dotBlink {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .4; transform: scale(.7); }
+}
+
+/* Field groups */
+.field-wrap {
+  margin-bottom: 1.15rem;
+  animation: fieldIn .4s ease both;
+}
+.field-wrap:nth-child(1) { animation-delay: .2s; }
+.field-wrap:nth-child(2) { animation-delay: .28s; }
+@keyframes fieldIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.field-label {
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-mid); margin-bottom: .38rem;
+  display: flex; align-items: center; gap: .35rem;
+}
+.field-label i { color: var(--green-base); font-size: .65rem; }
+
+.field-input-wrap { position: relative; }
+
+.field-prefix {
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 42px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--green-base); font-size: .8rem;
+  border-right: 1.5px solid var(--green-pale);
+  transition: color .22s, border-color .22s;
+  pointer-events: none;
+}
+
+.f-input {
+  width: 100%;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 9px;
+  padding: .65rem .9rem .65rem 48px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .9rem; color: var(--text-dark);
+  background: var(--white);
+  transition: border-color .22s, box-shadow .22s, background .22s;
+}
+.f-input:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3.5px rgba(64,145,108,.14);
+  outline: none; background: #fafffd;
+}
+.field-input-wrap:focus-within .field-prefix {
+  color: var(--green-dark); border-color: var(--green-base);
+}
+.f-input::placeholder { color: rgba(90,127,106,.38); font-size: .84rem; }
+.f-input.has-toggle   { padding-right: 48px; }
+
+/* Focus bar */
+.focus-bar {
+  height: 2px;
+  background: linear-gradient(90deg, var(--green-base), var(--green-light));
+  border-radius: 0 0 4px 4px;
+  transform: scaleX(0);
+  transition: transform .3s ease;
+  transform-origin: left;
+  margin-top: -2px;
+}
+.field-input-wrap:focus-within .focus-bar { transform: scaleX(1); }
+
+/* Password toggle */
+.pwd-toggle {
+  position: absolute;
+  right: 0; top: 0; bottom: 0; width: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  border-left: 1.5px solid var(--green-pale);
+  color: var(--text-soft); font-size: .78rem;
+  cursor: pointer;
+  border-radius: 0 9px 9px 0;
+  transition: color .2s, background .2s;
+}
+.pwd-toggle:hover { color: var(--green-dark); background: var(--green-mist); }
+
+/* =========================================================
+   SUBMIT BUTTON
+========================================================= */
+.btn-admin-login {
+  width: 100%;
+  background: linear-gradient(135deg, #1a2e22 0%, var(--green-dark) 50%, var(--green-base) 100%);
+  border: none; border-radius: 9px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .88rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: .75rem 1.5rem;
+  position: relative; overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(27,67,50,.32);
+  transition: transform .22s, box-shadow .22s;
+  margin-top: .5rem;
+  animation: fieldIn .4s .36s ease both;
+}
+.btn-admin-login::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-admin-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(27,67,50,.42);
+}
+.btn-admin-login .btn-text  { transition: opacity .2s; }
+.btn-admin-login .btn-spin  { display: none; }
+.btn-admin-login.loading .btn-text { opacity: 0; }
+.btn-admin-login.loading .btn-spin { display: inline-block; }
+
+/* Django error messages */
+.msg-error {
+  background: #ffebee;
+  border: none;
+  border-left: 3px solid #e53935;
+  border-radius: 8px;
+  padding: .65rem .9rem;
+  font-size: .8rem;
+  color: #c62828;
+  margin-top: .9rem;
+  animation: fieldIn .3s ease both;
+  display: flex; align-items: center; gap: .5rem;
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .admin-left  { display: none; }
+  .admin-right { padding: 2.2rem 1.8rem; }
+  .admin-card  { border-radius: 14px; }
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+<div class="container">
+<div class="row justify-content-center">
+<div class="col-lg-9 col-xl-8">
+
+  <div class="admin-card">
+
+    <!-- ======= LEFT PANEL ======= -->
+    <div class="admin-left">
+      <div class="left-shimmer"></div>
+      <div class="ring ring-1"></div>
+      <div class="ring ring-2"></div>
+      <div class="ring ring-3"></div>
+
+      <!-- Pulsing shield emblem centred on image -->
+      <div class="shield-emblem">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+
+      <!-- Brand -->
+      <div class="left-brand">
+        <i class="fa-solid fa-wheat-awn brand-icon"></i>
+        Crop Recommender
+      </div>
+
+      <!-- Bottom content -->
+      <div class="left-content">
+        <h2 class="left-heading">
+          Admin <em>Control</em><br>Panel
+        </h2>
+        <p class="left-sub">
+          Restricted access — authorised administrators only. Manage users, monitor system and control the full dashboard.
+        </p>
+        <ul class="admin-feat-list">
+          <li><span class="feat-dot"><i class="fa-solid fa-check"></i></span> Full User Management</li>
+          <li><span class="feat-dot"><i class="fa-solid fa-check"></i></span> Prediction Analytics</li>
+          <li><span class="feat-dot"><i class="fa-solid fa-check"></i></span> System Dashboard</li>
+          <li><span class="feat-dot"><i class="fa-solid fa-check"></i></span> Secure Encrypted Access</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ======= RIGHT PANEL ======= -->
+    <div class="admin-right">
+
+      <div class="form-eyebrow">
+        <i class="fa-solid fa-user-shield"></i> Restricted Access
+      </div>
+      <h1 class="form-title">Admin <em>Sign In</em></h1>
+      <p class="form-desc">Enter your administrator credentials to access the control panel.</p>
+
+      <!-- Admin badge strip -->
+      <div class="admin-badge-strip">
+        <i class="fa-solid fa-lock"></i>
+        <span>Secure Administrator Portal</span>
+        <div class="admin-badge-dot"></div>
+      </div>
+
+      <form method="POST" action="{% url 'recommender:admin_login' %}" id="adminForm">
+        {% csrf_token %}
+
+        <!-- Username -->
+        <div class="field-wrap">
+          <label class="field-label" for="adminUser">
+            <i class="fa-solid fa-user-shield"></i> Admin Username
+          </label>
+          <div class="field-input-wrap">
+            <span class="field-prefix"><i class="fa-solid fa-user-shield"></i></span>
+            <input type="text" id="adminUser" name="username"
+                   class="f-input" placeholder="Enter admin username"
+                   autocomplete="username" required>
+            <div class="focus-bar"></div>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="field-wrap">
+          <label class="field-label" for="adminPwd">
+            <i class="fa-solid fa-key"></i> Password
+          </label>
+          <div class="field-input-wrap">
+            <span class="field-prefix"><i class="fa-solid fa-key"></i></span>
+            <input type="password" id="adminPwd" name="password"
+                   class="f-input has-toggle" placeholder="••••••••"
+                   autocomplete="current-password" required>
+            <button type="button" class="pwd-toggle" id="togglePwd" title="Show / Hide">
+              <i class="fa-regular fa-eye" id="eyeIcon"></i>
+            </button>
+            <div class="focus-bar"></div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-admin-login" id="loginBtn">
+          <span class="btn-text">
+            <i class="fa-solid fa-right-to-bracket me-2"></i>Enter Admin Panel
+          </span>
+          <span class="btn-spin">
+            <i class="fa-solid fa-spinner fa-spin"></i> Verifying…
+          </span>
+        </button>
+
+      </form>
+
+      <!-- Django error messages -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="msg-error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+    </div><!-- /admin-right -->
+  </div><!-- /admin-card -->
+
+</div>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// Password toggle
+document.getElementById('togglePwd').addEventListener('click', function () {
+  const inp  = document.getElementById('adminPwd');
+  const icon = document.getElementById('eyeIcon');
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  icon.classList.toggle('fa-eye',      !show);
+  icon.classList.toggle('fa-eye-slash', show);
+});
+
+// Loading state on submit
+document.getElementById('adminForm').addEventListener('submit', function () {
+  document.getElementById('loginBtn').classList.add('loading');
+});
+
+// Success SweetAlert (on redirect with ?success=1)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('success') === '1') {
+  Swal.fire({
+    title: 'Welcome, Admin!',
+    text: 'You have successfully entered the dashboard.',
+    icon: 'success',
+    confirmButtonText: 'Continue',
+    confirmButtonColor: '#2d6a4f',
+    background: '#f4faf6',
+    iconColor: '#40916c',
+    customClass: {
+      title: 'swal-title',
+      popup: 'swal-popup'
+    }
+  });
+}
+</script>
+
+{% endblock %}

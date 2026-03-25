@@ -1,0 +1,1862 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ crop|title }} – Crop Prediction Analysis{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===== DESIGN SYSTEM ===== */
+:root {
+  --earth: #1a3a1a;
+  --leaf: #2d6a2d;
+  --lime: #5cb85c;
+  --gold: #e8b84b;
+  --cream: #faf7f0;
+  --clay: #f2ece0;
+  --red: #c0392b;
+  --sky: #2980b9;
+  --shadow: rgba(26,58,26,.18);
+  --card-r: 22px;
+  --font-head: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--cream);
+  color: #2d2d2d;
+  overflow-x: hidden;
+}
+
+/* ===== HERO ===== */
+.hero {
+  position: relative;
+  min-height: 72vh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  transform: scale(1.05);
+  transition: transform 8s ease;
+  filter: brightness(.55) saturate(1.2);
+}
+.hero:hover .hero-bg { transform: scale(1.08); }
+.hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(10,30,10,.9) 0%, transparent 60%);
+}
+.hero-content {
+  position: relative; z-index: 3;
+  padding: 0 0 60px 60px;
+  max-width: 760px;
+}
+.crop-badge {
+  display: inline-block;
+  background: var(--gold);
+  color: var(--earth);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  border-radius: 30px;
+  margin-bottom: 14px;
+  animation: fadeSlideUp .7s .1s both;
+}
+.hero-title {
+  font-family: var(--font-head);
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 16px;
+  animation: fadeSlideUp .7s .25s both;
+}
+.hero-sub {
+  color: rgba(255,255,255,.75);
+  font-size: 1.05rem;
+  font-weight: 300;
+  max-width: 520px;
+  animation: fadeSlideUp .7s .4s both;
+}
+.hero-stats {
+  display: flex; gap: 28px; flex-wrap: wrap;
+  margin-top: 32px;
+  animation: fadeSlideUp .7s .55s both;
+}
+.hstat {
+  background: rgba(255,255,255,.12);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 14px;
+  padding: 14px 22px;
+  text-align: center;
+  transition: all .35s;
+  cursor: default;
+}
+.hstat:hover {
+  background: rgba(255,255,255,.22);
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 12px 32px rgba(0,0,0,.3);
+}
+.hstat-value { font-size: 1.5rem; font-weight: 700; color: var(--gold); }
+.hstat-label { font-size: .72rem; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: 1px; }
+
+/* ===== NAVIGATION RAIL ===== */
+.sidebar {
+  position: sticky; top: 24px;
+  background: #fff;
+  border-radius: var(--card-r);
+  box-shadow: 0 4px 24px var(--shadow);
+  overflow: hidden;
+}
+.sidebar-head {
+  background: var(--leaf);
+  color: #fff;
+  padding: 18px 20px;
+  font-family: var(--font-head);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.nav-link-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 20px;
+  color: #444;
+  text-decoration: none;
+  font-size: .88rem;
+  font-weight: 500;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all .25s;
+}
+.nav-link-item:hover, .nav-link-item.active {
+  background: #eaf5ea;
+  color: var(--leaf);
+  padding-left: 28px;
+}
+.nav-link-item i { width: 18px; text-align: center; }
+
+/* ===== SECTION CARDS ===== */
+.s-card {
+  background: #fff;
+  border-radius: var(--card-r);
+  box-shadow: 0 4px 24px var(--shadow);
+  margin-bottom: 36px;
+  overflow: hidden;
+  transition: transform .45s cubic-bezier(.34,1.56,.64,1), box-shadow .45s;
+}
+.s-card:hover {
+  transform: translateY(-10px) scale(1.01);
+  box-shadow: 0 28px 60px rgba(46,106,46,.22);
+}
+.s-card-head {
+  padding: 22px 28px 6px;
+  border-bottom: 2px solid #f0f0f0;
+  display: flex; align-items: center; gap: 12px;
+}
+.s-card-head h2 {
+  font-family: var(--font-head);
+  font-size: 1.4rem;
+  color: var(--leaf);
+}
+.s-card-head i { color: var(--lime); font-size: 1.3rem; }
+.s-body { padding: 24px 28px; }
+
+/* ===== CHART CONTAINERS ===== */
+.chart-wrap {
+  position: relative;
+  border-radius: 14px;
+  background: #f8fbf8;
+  padding: 18px;
+  transition: box-shadow .3s;
+}
+.chart-wrap:hover { box-shadow: 0 8px 28px rgba(46,106,46,.15); }
+canvas { max-width: 100% !important; }
+
+/* ===== INFO CHIPS / BADGES ===== */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #eaf5ea;
+  color: var(--leaf);
+  border-radius: 30px;
+  padding: 5px 14px;
+  font-size: .82rem;
+  font-weight: 600;
+  margin: 4px;
+  transition: all .25s;
+}
+.chip:hover { background: var(--leaf); color: #fff; transform: scale(1.06); }
+.chip-red { background: #fdecea; color: var(--red); }
+.chip-red:hover { background: var(--red); color: #fff; }
+.chip-gold { background: #fef9e7; color: #b7860c; }
+
+/* ===== PEST CARDS ===== */
+.pest-card {
+  background: linear-gradient(135deg, #fff7f7 0%, #fff 100%);
+  border: 1.5px solid #fce4e4;
+  border-radius: 16px;
+  padding: 20px;
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
+  height: 100%;
+}
+.pest-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 16px 40px rgba(192,57,43,.15);
+  border-color: var(--red);
+}
+.pest-card .pest-name { font-weight: 700; color: var(--red); font-size: 1rem; margin-bottom: 6px; }
+.pest-card .pest-desc { font-size: .83rem; color: #666; margin-bottom: 10px; line-height: 1.5; }
+.pest-card .pest-ctrl { background: #eaf5ea; border-radius: 10px; padding: 10px 14px; font-size: .82rem; color: var(--leaf); font-weight: 500; }
+
+/* ===== MONSOON CARDS ===== */
+.monsoon-good {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border-radius: 18px; padding: 28px; text-align: center;
+  transition: all .35s;
+}
+.monsoon-good:hover { transform: scale(1.04); box-shadow: 0 12px 32px rgba(46,106,46,.2); }
+.monsoon-bad {
+  background: linear-gradient(135deg, #fdecea, #ffcdd2);
+  border-radius: 18px; padding: 28px; text-align: center;
+  animation: pulseBad 2.4s infinite;
+}
+@keyframes pulseBad { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); box-shadow: 0 8px 28px rgba(192,57,43,.25); } }
+.cyclone-alert {
+  background: linear-gradient(90deg, #fff3cd, #ffeaa7);
+  border-left: 5px solid #e8b84b;
+  border-radius: 12px; padding: 18px 24px; margin-top: 18px;
+  display: flex; align-items: center; gap: 14px;
+  animation: shimmer 3s infinite;
+}
+@keyframes shimmer { 0%,100% { opacity: 1; } 50% { opacity: .85; } }
+
+/* ===== HARVEST TIMELINE ===== */
+.harvest-box {
+  text-align: center; padding: 44px 28px;
+  background: linear-gradient(135deg, var(--earth), var(--leaf));
+  color: #fff;
+  border-radius: var(--card-r);
+}
+.harvest-box .big-num {
+  font-family: var(--font-head);
+  font-size: 4rem;
+  font-weight: 900;
+  color: var(--gold);
+  line-height: 1;
+}
+
+/* ===== EVOLUTION TIMELINE ===== */
+.evo-step {
+  display: flex; gap: 20px; margin-bottom: 22px;
+  opacity: 0; transform: translateX(-30px);
+  transition: all .6s ease;
+}
+.evo-step.visible { opacity: 1; transform: translateX(0); }
+.evo-dot {
+  width: 46px; height: 46px; min-width: 46px;
+  background: var(--gold); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: .85rem; color: var(--earth);
+  box-shadow: 0 4px 14px rgba(232,184,75,.4);
+}
+.evo-line { flex: 1; background: #f5f5f5; border-radius: 12px; padding: 14px 18px; }
+.evo-year { font-size: .72rem; font-weight: 700; color: var(--leaf); letter-spacing: 2px; text-transform: uppercase; }
+.evo-text { font-size: .88rem; color: #555; margin-top: 3px; line-height: 1.5; }
+
+/* ===== MAP ===== */
+#indiaMap { height: 540px; }
+.leaflet-popup-content-wrapper { border-radius: 12px !important; box-shadow: 0 8px 32px rgba(0,0,0,.18) !important; }
+
+/* ===== NUTRITION TABLE ===== */
+.nutri-row { transition: all .25s; }
+.nutri-row:hover { background: #eaf5ea !important; transform: scale(1.01); cursor: default; }
+.nutri-bar-fill {
+  height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--lime), var(--leaf));
+  transition: width 1.4s cubic-bezier(.17,.67,.83,.67);
+  width: 0;
+}
+
+/* ===== PRODUCTION RATE CARD ===== */
+.prod-gauge {
+  background: linear-gradient(135deg, var(--leaf), var(--earth));
+  border-radius: 18px; padding: 28px;
+  color: #fff; text-align: center;
+  transition: transform .35s;
+}
+.prod-gauge:hover { transform: scale(1.04); }
+.gauge-val { font-family: var(--font-head); font-size: 3rem; font-weight: 900; color: var(--gold); }
+
+/* ===== PESTICIDE LIST ===== */
+.pesto-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: all .25s;
+}
+.pesto-item:hover { background: #eaf5ea; padding-left: 26px; }
+.pesto-item i { color: var(--lime); margin-top: 2px; }
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fadeIn .7s ease both; }
+.pop-in { animation: fadeSlideUp .6s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ===== PROGRESS SPINNER / LOADING ===== */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: var(--earth);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+  transition: opacity .6s, visibility .6s;
+}
+.loading-overlay.hidden { opacity: 0; visibility: hidden; }
+.loader-ring {
+  width: 60px; height: 60px;
+  border: 4px solid rgba(255,255,255,.2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .hero-content { padding: 0 20px 40px; }
+  .hero-stats { flex-direction: column; gap: 10px; }
+}
+
+/* ===== SCROLL REVEAL ===== */
+.sr { opacity: 0; transform: translateY(40px); transition: opacity .7s ease, transform .7s ease; }
+.sr.visible { opacity: 1; transform: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loader">
+  <div style="text-align:center">
+    <div class="loader-ring"></div>
+    <p style="color:rgba(255,255,255,.6);margin-top:14px;font-size:.85rem;letter-spacing:2px;text-transform:uppercase">Loading crop data…</p>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <span class="crop-badge" id="cropBadge">Crop Analysis</span>
+    <h1 class="hero-title" id="heroTitle">—</h1>
+    <p class="hero-sub" id="heroSub">Loading information…</p>
+    <div class="hero-stats" id="heroStats"></div>
+  </div>
+</section>
+
+<!-- MAIN LAYOUT -->
+<div class="container-fluid px-4 py-5" style="max-width:1440px">
+  <div class="row g-4">
+
+    <!-- SIDEBAR -->
+    <div class="col-lg-3 col-xl-2">
+      <div class="sidebar">
+        <div class="sidebar-head"><i class="fa-solid fa-leaf me-2"></i>Sections</div>
+        <a href="#production" class="nav-link-item"><i class="fa-solid fa-chart-pie"></i>Production Rate</a>
+        <a href="#growth" class="nav-link-item"><i class="fa-solid fa-seedling"></i>Growth Timeline</a>
+        <a href="#monsoon" class="nav-link-item"><i class="fa-solid fa-cloud-rain"></i>Monsoon &amp; Alerts</a>
+        <a href="#harvest" class="nav-link-item"><i class="fa-solid fa-calendar-check"></i>Harvest Time</a>
+        <a href="#evolution" class="nav-link-item"><i class="fa-solid fa-timeline"></i>Evolution</a>
+        <a href="#pesticides" class="nav-link-item"><i class="fa-solid fa-spray-can-sparkles"></i>Pesticides</a>
+        <a href="#insects" class="nav-link-item"><i class="fa-solid fa-bug"></i>Insects</a>
+        <a href="#map" class="nav-link-item"><i class="fa-solid fa-map-location-dot"></i>India Map</a>
+        <a href="#charts" class="nav-link-item"><i class="fa-solid fa-chart-bar"></i>State Charts</a>
+        <a href="#nutrition" class="nav-link-item"><i class="fa-solid fa-apple-whole"></i>Nutrition</a>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="col-lg-9 col-xl-10">
+
+      <!-- PRODUCTION RATE -->
+      <section id="production" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-chart-pie"></i>
+            <h2>Production Rate &amp; State Share</h2>
+          </div>
+          <div class="s-body">
+            <div class="row g-4" id="prodGauges"></div>
+            <div class="chart-wrap mt-4">
+              <canvas id="productionBarChart" height="120"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GROWTH TIMELINE -->
+      <section id="growth" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-seedling"></i>
+            <h2>Monthly Growth Timeline</h2>
+          </div>
+          <div class="s-body">
+            <div class="alert-info rounded-3 p-3 mb-4" id="growthAlert" style="background:#eaf5ea;border-left:4px solid var(--lime)"></div>
+            <div class="chart-wrap">
+              <canvas id="growthLineChart" height="150"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MONSOON + CYCLONE -->
+      <section id="monsoon" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-cloud-sun-rain"></i>
+            <h2>Monsoon Prediction &amp; Cyclone Alerts</h2>
+          </div>
+          <div class="s-body">
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <div class="monsoon-good">
+                  <i class="fa-solid fa-cloud-rain fa-3x text-success mb-3"></i>
+                  <h5 style="font-family:var(--font-head);color:var(--earth)">Good Monsoon</h5>
+                  <p id="monsoonGood" style="color:#2d6a2d;font-size:.9rem"></p>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="monsoon-bad">
+                  <i class="fa-solid fa-triangle-exclamation fa-3x text-danger mb-3"></i>
+                  <h5 style="font-family:var(--font-head);color:#c0392b">Red Alert</h5>
+                  <p id="monsoonBad" style="color:#c0392b;font-size:.9rem"></p>
+                </div>
+              </div>
+            </div>
+            <div class="cyclone-alert" id="cycloneAlert"></div>
+            <div class="chart-wrap mt-4">
+              <h6 class="fw-semibold mb-3" style="color:var(--leaf)">Monthly Rainfall vs Crop Requirement (mm)</h6>
+              <canvas id="monsoonChart" height="130"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HARVEST TIME -->
+      <section id="harvest" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-calendar-check"></i>
+            <h2>Harvest Time &amp; Best Practices</h2>
+          </div>
+          <div class="s-body">
+            <div class="row g-4">
+              <div class="col-md-5">
+                <div class="harvest-box">
+                  <div class="big-num" id="harvestDays">—</div>
+                  <p style="font-size:.82rem;opacity:.8;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Days after sowing</p>
+                  <div style="margin-top:18px;font-size:.92rem;opacity:.85" id="harvestSeason"></div>
+                </div>
+              </div>
+              <div class="col-md-7">
+                <h6 class="fw-bold mb-3" style="color:var(--leaf)">Best Harvest Practices</h6>
+                <div id="harvestTips"></div>
+                <div class="chart-wrap mt-4">
+                  <canvas id="harvestChart" height="160"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EVOLUTION -->
+      <section id="evolution" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-timeline"></i>
+            <h2>Crop Evolution &amp; History</h2>
+          </div>
+          <div class="s-body">
+            <div id="evoTimeline"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTICIDES -->
+      <section id="pesticides" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-spray-can-sparkles"></i>
+            <h2>Recommended Pesticides &amp; Insecticides</h2>
+          </div>
+          <div class="s-body">
+            <div id="pesticideList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INSECTS -->
+      <section id="insects" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-bug"></i>
+            <h2>Major Insects &amp; Control Methods</h2>
+          </div>
+          <div class="s-body">
+            <div class="row g-3" id="pestGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INDIA MAP -->
+      <section id="map" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-map-location-dot"></i>
+            <h2>India Crop Distribution Map</h2>
+          </div>
+          <div style="border-radius:0 0 0 0;overflow:hidden">
+            <div id="indiaMap"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATE CHARTS -->
+      <section id="charts" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-chart-bar"></i>
+            <h2>State-wise Production Analysis</h2>
+          </div>
+          <div class="s-body">
+            <div class="row g-4">
+              <div class="col-md-5">
+                <div class="chart-wrap">
+                  <h6 class="fw-semibold mb-3 text-center" style="color:var(--leaf)">Production Share (%)</h6>
+                  <canvas id="pieChart" height="280"></canvas>
+                </div>
+              </div>
+              <div class="col-md-7">
+                <div class="chart-wrap">
+                  <h6 class="fw-semibold mb-3 text-center" style="color:var(--leaf)">State-wise Output (Horizontal)</h6>
+                  <canvas id="horizBar" height="280"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NUTRITION -->
+      <section id="nutrition" class="mb-4 sr">
+        <div class="s-card">
+          <div class="s-card-head">
+            <i class="fa-solid fa-apple-whole"></i>
+            <h2>Nutritional Value (per 100g)</h2>
+          </div>
+          <div class="s-body">
+            <div class="row g-4 mb-4">
+              <div class="col-md-5">
+                <div class="chart-wrap">
+                  <canvas id="nutriPie" height="270"></canvas>
+                </div>
+              </div>
+              <div class="col-md-7">
+                <div class="chart-wrap">
+                  <canvas id="nutriBar" height="270"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-borderless" style="font-size:.88rem">
+                <thead>
+                  <tr style="background:var(--leaf);color:#fff;border-radius:10px">
+                    <th style="padding:12px 16px;border-radius:10px 0 0 10px">Nutrient</th>
+                    <th style="padding:12px 16px">Amount</th>
+                    <th style="padding:12px 16px">% Daily Value</th>
+                    <th style="padding:12px 16px">Progress</th>
+                    <th style="padding:12px 16px;border-radius:0 10px 10px 0">Benefit</th>
+                  </tr>
+                </thead>
+                <tbody id="nutriTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /col -->
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+/* =====================================================
+   COMPLETE CROP DATABASE – ALL 22 CROPS
+   ===================================================== */
+const CROPS = {
+
+  rice: {
+    name: "Rice", category: "Cereal",
+    tip: "Transplanting in puddles improves root establishment and yield.",
+    image: "https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=1600",
+    stats: [
+      { v:"3–6 t/ha", l:"Avg Yield" },{ v:"₹1,868", l:"MSP/q" },{ v:"120–150d", l:"Duration" }
+    ],
+    production: { total:"120 MT", rank:1 },
+    growth: {
+      labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+      data:[5,5,20,30,50,80,95,90,70,40,15,5]
+    },
+    monsoon: {
+      good:"Consistent SW monsoon (Jun–Sep) with 100–200 mm/month is ideal for paddy.",
+      bad:"Drought in kharif season causes 30–50% yield loss. Waterlogging after flowering is also harmful.",
+      cyclone:"Cyclones during Oct–Nov (harvesting) damage standing crop severely in coastal Odisha & AP."
+    },
+    harvest: { days:"120–150", season:"October–November (Kharif); March (Rabi)",
+      tips:["Harvest when 80% grains turn golden yellow","Avoid harvesting in rain — grain discoloration risk","Use combine harvester for large fields","Dry paddy to 14% moisture before storage"]
+    },
+    evolution:[
+      { yr:"~7000 BC", txt:"Wild Oryza nivara domesticated in Yangtze River valley, China." },
+      { yr:"~2000 BC", txt:"Rice cultivation spreads to South Asia and Indian subcontinent." },
+      { yr:"1000 AD", txt:"High-yielding Indica varieties developed in Bengal and Odisha." },
+      { yr:"1960s", txt:"Green Revolution: IR-8 'miracle rice' from IRRI triples Asian yields." },
+      { yr:"2000s", txt:"BPT-5204 Sona Masuri and Swarna varieties dominate Indian markets." }
+    ],
+    pesticides:[
+      "Chlorpyrifos 20EC – 2 ml/L water, for stem borer control",
+      "Carbofuran 3G – 1 kg/100 sqm, soil application for root grubs",
+      "Propiconazole 25EC – 1 ml/L, for blast and sheath blight",
+      "Imidacloprid 200SL – 0.25 ml/L, for brown planthopper",
+      "Tricyclazole 75WP – 0.6 g/L, highly effective against blast disease",
+      "Buprofezin 25SC – 1 ml/L, for whitebacked planthopper"
+    ],
+    pests:[
+      { n:"Brown Planthopper", d:"Sucks sap from stem base causing 'hopperburn'. Major kharif pest.", c:"Drain water, apply Buprofezin 25SC." },
+      { n:"Stem Borer", d:"Larvae bore into stem. Causes 'deadheart' in vegetative stage.", c:"Apply Cartap 4G granules at tillering stage." },
+      { n:"Leaf Folder", d:"Folds green leaf and feeds inside. Reduces photosynthesis.", c:"Spray Chlorpyrifos 20EC @ 2ml/L." },
+      { n:"Gall Midge", d:"Induces silver shoot / onion leaf symptom.", c:"Drain field, apply Carbofuran granules." }
+    ],
+    states:[
+      { n:"West Bengal",lat:22.9868,lng:87.8550,share:15 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:13 },
+      { n:"Punjab",lat:31.1471,lng:75.3412,share:12 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:11 },
+      { n:"Odisha",lat:20.9517,lng:85.0985,share:10 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:9 }
+    ],
+    nutrition:[
+      { n:"Calories",    v:"130 kcal",  pct:7,   b:"Quick energy for daily work" },
+      { n:"Carbohydrate",v:"28.2 g",    pct:10,  b:"Primary fuel for brain & muscles" },
+      { n:"Protein",     v:"2.7 g",     pct:5,   b:"Muscle repair & growth" },
+      { n:"Iron",        v:"0.2 mg",    pct:1,   b:"Oxygen transport in blood" },
+      { n:"Calcium",     v:"10 mg",     pct:1,   b:"Bone strength" },
+      { n:"Potassium",   v:"35 mg",     pct:1,   b:"Heart & nerve function" },
+      { n:"Vitamin B1",  v:"0.18 mg",   pct:15,  b:"Nervous system support" },
+      { n:"Magnesium",   v:"12 mg",     pct:3,   b:"Enzyme function" }
+    ]
+  },
+
+  maize: {
+    name:"Maize", category:"Cereal",
+    tip:"Apply zinc sulphate 25 kg/ha at sowing for better ear formation.",
+    image:"https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=1600",
+    stats:[{ v:"5–8 t/ha", l:"Avg Yield" },{ v:"₹1,962", l:"MSP/q" },{ v:"90–110d", l:"Duration" }],
+    production:{ total:"33 MT", rank:3 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[10,10,25,55,80,95,90,70,45,20,10,8] },
+    monsoon:{ good:"Well-distributed rainfall 600–1200 mm/year is perfect.", bad:"Waterlogging during pollination reduces grain set drastically.", cyclone:"Cyclone-induced flooding in coastal Karnataka destroys kharif maize." },
+    harvest:{ days:"90–110", season:"September–October (Kharif); June (Rabi)", tips:["Harvest when husks dry and silk turns brown","Moisture should be 25–30% at harvest","Dry to 12–14% for safe storage","Avoid ear rots by harvesting timely"] },
+    evolution:[
+      { yr:"~7000 BC", txt:"Teosinte wild grass in Mexico domesticated into maize (corn)." },
+      { yr:"1000 AD", txt:"Maize reaches Caribbean and then Europe via Columbus 1492." },
+      { yr:"1800s", txt:"Introduced to India by Portuguese; grown mainly in hills." },
+      { yr:"1960s", txt:"Hybrid varieties introduced under Green Revolution." },
+      { yr:"2000s", txt:"QPM (Quality Protein Maize) varieties developed in India." }
+    ],
+    pesticides:["Atrazine 50WP – 2 kg/ha, pre-emergence weedicide","Chlorpyrifos 20EC – 2 ml/L, for stem borer","Mancozeb 75WP – 2 g/L, for blight control","Imidacloprid 70WS – seed treatment for aphids","Carbendazim 50WP – 1 g/L, for stalk rot","Spinosad 45SC – 0.3 ml/L, for FAW"],
+    pests:[
+      { n:"Fall Armyworm (FAW)", d:"Most devastating pest; eats whorl leaves voraciously.", c:"Spray Spinosad 45SC or Emamectin benzoate 5SG." },
+      { n:"Stem Borer", d:"Bores into stem; dead heart symptom in young plants.", c:"Apply Carbofuran 3G in whorl." },
+      { n:"Aphids", d:"Cluster under leaves, stunt growth and transmit viruses.", c:"Spray Imidacloprid 200SL @ 0.3 ml/L." },
+      { n:"Leaf Blight", d:"Fungal; grey-brown oval lesions on leaves.", c:"Apply Mancozeb 75WP weekly." }
+    ],
+    states:[
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:20 },
+      { n:"Madhya Pradesh",lat:22.9734,lng:78.6569,share:16 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:13 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:10 },
+      { n:"Bihar",lat:25.0961,lng:85.3131,share:9 },
+      { n:"Himachal Pradesh",lat:31.1048,lng:77.1734,share:7 }
+    ],
+    nutrition:[
+      { n:"Calories",   v:"86 kcal", pct:4,  b:"Sustained energy release" },
+      { n:"Carbs",      v:"19 g",    pct:7,  b:"Fuel for workouts" },
+      { n:"Protein",    v:"3.3 g",   pct:7,  b:"Muscle building" },
+      { n:"Fiber",      v:"2.7 g",   pct:11, b:"Gut health, constipation relief" },
+      { n:"Vitamin C",  v:"6.8 mg",  pct:8,  b:"Immunity booster" },
+      { n:"Potassium",  v:"270 mg",  pct:8,  b:"Lowers blood pressure" },
+      { n:"Magnesium",  v:"37 mg",   pct:9,  b:"Bone & nerve health" },
+      { n:"Folate",     v:"46 µg",   pct:12, b:"Foetal development" }
+    ]
+  },
+
+  chickpea: {
+    name:"Chickpea", category:"Pulse",
+    tip:"Inoculate seeds with Mesorhizobium culture before sowing to fix atmospheric nitrogen.",
+    image:"https://images.unsplash.com/photo-1585996547393-b88da4e05e85?w=1600",
+    stats:[{ v:"1–2 t/ha", l:"Avg Yield" },{ v:"₹5,440", l:"MSP/q" },{ v:"90–120d", l:"Duration" }],
+    production:{ total:"11 MT", rank:1 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[60,70,50,20,5,5,5,5,20,40,70,75] },
+    monsoon:{ good:"Rabi crop; minimal rain at flowering (Dec–Feb) is ideal.", bad:"Excess humidity causes Botrytis grey mould. Rain at maturity causes seed discoloration.", cyclone:"Low risk but heavy unseasonal rains in Mar–Apr destroy standing crop." },
+    harvest:{ days:"90–120", season:"March–April (Rabi)", tips:["Harvest when 90% pods turn yellow-brown","Thresh immediately after harvesting","Avoid harvesting in morning dew","Store in gunny bags at <12% moisture"] },
+    evolution:[
+      { yr:"~7500 BC", txt:"Chickpea (Cicer arietinum) domesticated in Fertile Crescent, Middle East." },
+      { yr:"2500 BC", txt:"Spread to Indian subcontinent via trade routes." },
+      { yr:"1000 AD", txt:"Desi and Kabuli types developed in India and Central Asia." },
+      { yr:"1970s", txt:"ICRISAT breeding programs create wilt-resistant varieties." },
+      { yr:"2010s", txt:"JG-14 and Vijay varieties dominate Madhya Pradesh production." }
+    ],
+    pesticides:["Endosulfan 35EC – 2 ml/L, for pod borer","Chlorpyrifos 20EC – 2 ml/L, larval control","Propiconazole 25EC – 1 ml/L, for wilt","Carbendazim 50WP – 1 g/L, seed treatment","Mancozeb 75WP – 2 g/L, for blight","Tebuconazole 25WG – 1 g/L, for Botrytis"],
+    pests:[
+      { n:"Gram Pod Borer", d:"Most destructive pest; larvae eat developing seeds inside pods.", c:"Spray Chlorpyrifos + Cypermethrin at pod formation." },
+      { n:"Cutworm", d:"Cut seedlings near ground level at night.", c:"Apply Chlorpyrifos dust in soil before sowing." },
+      { n:"Thrips", d:"Silvery streaks on leaves; curling and distortion.", c:"Spray Imidacloprid @ 0.25 ml/L." },
+      { n:"Root Rot (Fusarium)", d:"Wilting, yellowing, browning of roots.", c:"Seed treatment with Trichoderma viride." }
+    ],
+    states:[
+      { n:"Madhya Pradesh",lat:22.9734,lng:78.6569,share:30 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:22 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:15 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:12 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:8 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:5 }
+    ],
+    nutrition:[
+      { n:"Protein",    v:"19 g",    pct:38, b:"Complete amino acid profile for vegetarians" },
+      { n:"Fiber",      v:"17 g",    pct:68, b:"Excellent for gut health & blood sugar control" },
+      { n:"Iron",       v:"6.2 mg",  pct:34, b:"Prevents anemia" },
+      { n:"Calcium",    v:"105 mg",  pct:10, b:"Bones & teeth" },
+      { n:"Potassium",  v:"875 mg",  pct:19, b:"Heart health" },
+      { n:"Folate",     v:"557 µg",  pct:139,b:"Crucial during pregnancy" },
+      { n:"Vitamin B6", v:"0.54 mg", pct:32, b:"Brain metabolism" },
+      { n:"Zinc",       v:"3.4 mg",  pct:31, b:"Immunity & wound healing" }
+    ]
+  },
+
+  kidneybeans: {
+    name:"Kidney Beans", category:"Pulse",
+    tip:"Soak beans 8–12 hours before cooking to reduce anti-nutrients.",
+    image:"https://images.unsplash.com/photo-1551462147-37885acc36f1?w=1600",
+    stats:[{ v:"1–1.5 t/ha", l:"Avg Yield" },{ v:"₹6,000", l:"Market Rate/q" },{ v:"90–100d", l:"Duration" }],
+    production:{ total:"0.5 MT", rank:10 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[60,55,30,10,5,5,10,30,60,70,75,65] },
+    monsoon:{ good:"Cool temperatures (15–25°C) with moderate rain 400–600 mm/season.", bad:"High humidity causes rust and anthracnose fungal diseases.", cyclone:"Unseasonal rains in Uttarakhand hills destroy mature pods." },
+    harvest:{ days:"90–100", season:"October–November; May–June (hills)", tips:["Harvest when pods dry completely","Thresh gently to avoid seed cracking","Avoid field moisture at harvest","Grade seeds for uniform size"] },
+    evolution:[
+      { yr:"~7000 BC", txt:"Wild Phaseolus vulgaris domesticated in Americas." },
+      { yr:"1500s", txt:"Spanish explorers bring kidney beans to Europe and Asia." },
+      { yr:"1700s", txt:"Cultivation begins in India's hill regions (Jammu, Himachal)." },
+      { yr:"1990s", txt:"IARI releases rust-resistant varieties for Indian conditions." },
+      { yr:"2010s", txt:"Rajma becomes a staple dish across North India." }
+    ],
+    pesticides:["Mancozeb 75WP – 2 g/L, for rust","Carbendazim – 1 g/L, anthracnose control","Chlorpyrifos 20EC – 2 ml/L, pod borers","Dimethoate 30EC – 2 ml/L, for aphids","Metalaxyl – 2 g/L, for root rot","Tebuconazole – 1 g/L, angular leaf spot"],
+    pests:[
+      { n:"Bean Pod Borer", d:"Larvae enter pods and consume developing seeds.", c:"Spray Spinosad 45SC at pod formation." },
+      { n:"Aphids", d:"Dense colonies under leaves; transmit bean mosaic virus.", c:"Spray Dimethoate 30EC @ 2 ml/L." },
+      { n:"Rust (Fungal)", d:"Orange-brown pustules on leaves; major yield reducer.", c:"Apply Propiconazole at first sign." },
+      { n:"Whitefly", d:"Sucks sap and transmits viruses.", c:"Spray Imidacloprid + yellow sticky traps." }
+    ],
+    states:[
+      { n:"Jammu & Kashmir",lat:33.7782,lng:76.5762,share:35 },
+      { n:"Himachal Pradesh",lat:31.1048,lng:77.1734,share:28 },
+      { n:"Uttarakhand",lat:30.0668,lng:79.0193,share:20 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:10 },
+      { n:"Punjab",lat:31.1471,lng:75.3412,share:5 },
+      { n:"Haryana",lat:29.0588,lng:76.0856,share:2 }
+    ],
+    nutrition:[
+      { n:"Protein",   v:"22.5 g", pct:45, b:"High-quality plant protein" },
+      { n:"Fiber",     v:"15.2 g", pct:61, b:"Cholesterol reduction" },
+      { n:"Iron",      v:"5.2 mg", pct:29, b:"Energy production" },
+      { n:"Calcium",   v:"83 mg",  pct:8,  b:"Bone density" },
+      { n:"Potassium", v:"1405 mg",pct:30, b:"Kidney function" },
+      { n:"Folate",    v:"394 µg", pct:99, b:"DNA synthesis" },
+      { n:"Zinc",      v:"2.8 mg", pct:25, b:"Immune defense" },
+      { n:"Vitamin K", v:"8.4 µg", pct:7,  b:"Blood clotting" }
+    ]
+  },
+
+  pigeonpeas: {
+    name:"Pigeon Peas", category:"Pulse",
+    tip:"Intercrop pigeon pea with sorghum (3:1 rows) for 20% extra income.",
+    image:"https://images.unsplash.com/photo-1604348927296-0e8b12af58c5?w=1600",
+    stats:[{ v:"0.7–1 t/ha", l:"Avg Yield" },{ v:"₹7,000", l:"MSP/q" },{ v:"150–180d", l:"Duration" }],
+    production:{ total:"3.5 MT", rank:2 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[20,10,5,5,10,30,60,80,90,70,40,20] },
+    monsoon:{ good:"Moderate rainfall 600–1000 mm; deep black soils retain moisture well.", bad:"Waterlogging kills plants within 48 hours. Prolonged drought at flowering.", cyclone:"Cyclone Fani-type events destroy standing crop in Odisha and AP." },
+    harvest:{ days:"150–180", season:"January–February", tips:["Harvest in early morning to avoid pod shattering","Uproot whole plant when 75% pods turn brown","Dry under shade for 3–5 days","Thresh mechanically for large fields"] },
+    evolution:[
+      { yr:"~3500 BC", txt:"Cajanus cajan domesticated in India; oldest pulse crop." },
+      { yr:"500 BC", txt:"Mentioned in ancient Sanskrit texts as 'Adhaki'." },
+      { yr:"1700s", txt:"Spread to Africa and Americas via Indian Ocean trade." },
+      { yr:"1980s", txt:"ICRISAT releases wilt-sterility mosaic resistant varieties." },
+      { yr:"2010s", txt:"Short-duration varieties (ICPL-87119) extend growing areas." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, pod fly","Emamectin benzoate 5SG – 0.4 g/L, borers","Indoxacarb 14.5SC – 1 ml/L, gram caterpillar","Mancozeb 75WP – 2 g/L, wilt control","Imidacloprid 70WS – seed treatment","Propiconazole 25EC – 1 ml/L, Phytophthora"],
+    pests:[
+      { n:"Pod Fly", d:"Maggots feed inside pods, most damaging post-flowering.", c:"Spray Dimethoate 30EC at pod formation." },
+      { n:"Gram Caterpillar", d:"Eats leaves and flowers; can defoliate plant.", c:"Apply Chlorpyrifos + Cypermethrin spray." },
+      { n:"Sterility Mosaic", d:"Virus-like disease; severe stunting, no pods formed.", c:"Remove infected plants; control mite vector." },
+      { n:"Fusarium Wilt", d:"Sudden wilting and browning of vascular tissue.", c:"Treat seed with Carbendazim + Thiram." }
+    ],
+    states:[
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:27 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:20 },
+      { n:"Madhya Pradesh",lat:22.9734,lng:78.6569,share:14 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:12 },
+      { n:"Gujarat",lat:22.2587,lng:71.1924,share:9 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:8 }
+    ],
+    nutrition:[
+      { n:"Protein",   v:"21.7 g", pct:43, b:"Excellent meat alternative" },
+      { n:"Fiber",     v:"15 g",   pct:60, b:"Digestive health" },
+      { n:"Iron",      v:"5.2 mg", pct:29, b:"Hemoglobin formation" },
+      { n:"Calcium",   v:"130 mg", pct:13, b:"Strong bones" },
+      { n:"Potassium", v:"1392 mg",pct:30, b:"Muscle contraction" },
+      { n:"Folate",    v:"456 µg", pct:114,b:"Neural tube development" },
+      { n:"Vitamin C", v:"0 mg",   pct:0,  b:"—" },
+      { n:"Zinc",      v:"2.8 mg", pct:25, b:"Cell division & growth" }
+    ]
+  },
+
+  mothbeans: {
+    name:"Moth Beans", category:"Pulse",
+    tip:"Moth bean thrives in drought; plant on sandy soils of Rajasthan with zero irrigation.",
+    image:"https://images.unsplash.com/photo-1509358271058-acd22cc93898?w=1600",
+    stats:[{ v:"0.4–0.8 t/ha", l:"Avg Yield" },{ v:"₹5,500", l:"Market/q" },{ v:"75–90d", l:"Duration" }],
+    production:{ total:"0.35 MT", rank:15 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[5,5,5,10,20,60,80,85,60,20,5,5] },
+    monsoon:{ good:"Short kharif season rain 200–500 mm; drought tolerant.", bad:"Excess rain causes root rot; prolonged waterlogging fatal.", cyclone:"Minimal risk due to arid zones." },
+    harvest:{ days:"75–90", season:"September–October", tips:["Harvest in stages as pods don't mature uniformly","Uproot and dry in sun for 2–3 days","Separate pods by beating with sticks","Clean and store at low humidity"] },
+    evolution:[
+      { yr:"~2000 BC", txt:"Vigna aconitifolia originated in Indian subcontinent." },
+      { yr:"1000 AD", txt:"Traditional crop of Rajasthan desert communities." },
+      { yr:"1970s", txt:"CAZRI and ICAR develop improved drought-tolerant lines." },
+      { yr:"2000s", txt:"Recognized as strategic food security crop for arid zones." },
+      { yr:"2020s", txt:"Export demand grows for moth bean sprouts in health food markets." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, pod borer","Dimethoate 30EC – 2 ml/L, aphids","Mancozeb 75WP – 2 g/L, cercospora leaf spot","Carbendazim 50WP – 1 g/L, powdery mildew","Sulfur dust – 25 kg/ha, mite control","Quinalphos 25EC – 2 ml/L, pod fly"],
+    pests:[
+      { n:"Bruchid Beetle", d:"Infests stored seeds; can destroy 40% of stored grain.", c:"Treat with Malathion dust before storage." },
+      { n:"Leaf Eating Caterpillar", d:"Skeletonizes leaves in field.", c:"Spray Spinosad or Chlorpyrifos." },
+      { n:"Aphids", d:"Colonies on tender shoots; virus vectors.", c:"Spray Dimethoate 30EC." },
+      { n:"Cercospora Leaf Spot", d:"Brown circular spots with yellow halo.", c:"Apply Mancozeb 75WP @ 2 g/L." }
+    ],
+    states:[
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:65 },
+      { n:"Gujarat",lat:22.2587,lng:71.1924,share:15 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:10 },
+      { n:"Haryana",lat:29.0588,lng:76.0856,share:5 },
+      { n:"Punjab",lat:31.1471,lng:75.3412,share:3 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:2 }
+    ],
+    nutrition:[
+      { n:"Protein",   v:"22.9 g", pct:46, b:"Desert community protein source" },
+      { n:"Carbs",     v:"62.3 g", pct:23, b:"Energy dense" },
+      { n:"Fiber",     v:"4.5 g",  pct:18, b:"Digestive health" },
+      { n:"Iron",      v:"7.3 mg", pct:41, b:"Anti-anemia" },
+      { n:"Calcium",   v:"202 mg", pct:20, b:"Bones" },
+      { n:"Potassium", v:"1282 mg",pct:27, b:"Hydration balance" },
+      { n:"Vitamin B1",v:"0.6 mg", pct:50, b:"Energy metabolism" },
+      { n:"Zinc",      v:"2.7 mg", pct:25, b:"Immune function" }
+    ]
+  },
+
+  mungbean: {
+    name:"Mung Bean", category:"Pulse",
+    tip:"Mung bean can be grown as a catch crop between wheat and cotton for 6 weeks.",
+    image:"https://images.unsplash.com/photo-1601050690597-df0568f70950?w=1600",
+    stats:[{ v:"0.8–1.2 t/ha", l:"Avg Yield" },{ v:"₹7,755", l:"MSP/q" },{ v:"60–75d", l:"Duration" }],
+    production:{ total:"1.9 MT", rank:5 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[15,20,40,70,80,70,50,30,20,15,10,12] },
+    monsoon:{ good:"Warm humid climate with 500–750 mm rainfall.", bad:"Heavy rain and waterlogging cause root rot and powdery mildew.", cyclone:"Standing mungbean in Andhra/Odisha coast highly vulnerable." },
+    harvest:{ days:"60–75", season:"June–July (Summer); October (Kharif)", tips:["Pick pods individually as they ripen","Avoid delay — pods shatter easily","Dry seeds to 10–11% moisture","Store in clean, dry containers"] },
+    evolution:[
+      { yr:"~1500 BC", txt:"Vigna radiata domesticated in India; spread to SE Asia early." },
+      { yr:"300 BC", txt:"Ayurvedic texts mention mung as 'mudga', easiest pulse to digest." },
+      { yr:"1960s", txt:"High-yielding Pusa Baisakhi variety developed by IARI." },
+      { yr:"1990s", txt:"MH-318 and IPM 205-7 varieties released for summer cultivation." },
+      { yr:"2015+", txt:"Mung bean sprouts market explodes globally in health food segment." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, pod borer","Carbendazim 50WP – 1 g/L, powdery mildew","Propiconazole 25EC – 1 ml/L, leaf spot","Imidacloprid 200SL – 0.25 ml/L, aphids/jassids","Hexaconazole 5EC – 2 ml/L, yellow mosaic","Mancozeb 75WP – 2 g/L, blight"],
+    pests:[
+      { n:"Yellow Mosaic Virus", d:"Whitefly-transmitted; entire plant turns yellow, no yield.", c:"Control whitefly with Imidacloprid immediately." },
+      { n:"Bruchid", d:"Destroys stored grain within weeks.", c:"Sun-dry seeds + apply malathion dust in storage." },
+      { n:"Thrips", d:"Silvery leaf texture; distorted pods.", c:"Spray Spinosad 45SC @ 0.3 ml/L." },
+      { n:"Leaf Curl Virus", d:"Curled, distorted leaves; reduced pod set.", c:"Rogue infected plants; manage whitefly vector." }
+    ],
+    states:[
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:25 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:18 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:15 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:12 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:10 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:8 }
+    ],
+    nutrition:[
+      { n:"Protein",   v:"23.9 g", pct:48, b:"Easiest plant protein to digest" },
+      { n:"Fiber",     v:"16.3 g", pct:65, b:"Blood sugar regulation" },
+      { n:"Iron",      v:"6.7 mg", pct:37, b:"Oxygen transport" },
+      { n:"Calcium",   v:"132 mg", pct:13, b:"Bone health" },
+      { n:"Potassium", v:"1246 mg",pct:27, b:"Heart rhythm" },
+      { n:"Folate",    v:"625 µg", pct:156,b:"Cell growth (highest in pulses)" },
+      { n:"Vitamin B6",v:"0.38 mg",pct:22, b:"Hormone regulation" },
+      { n:"Magnesium", v:"189 mg", pct:47, b:"Muscle relaxation" }
+    ]
+  },
+
+  blackgram: {
+    name:"Black Gram", category:"Pulse",
+    tip:"Black gram fixes 50–60 kg N/ha per season — no urea needed.",
+    image:"https://images.unsplash.com/photo-1563636619-e9143da7973b?w=1600",
+    stats:[{ v:"0.7–1 t/ha", l:"Avg Yield" },{ v:"₹7,400", l:"MSP/q" },{ v:"70–80d", l:"Duration" }],
+    production:{ total:"3 MT", rank:3 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[30,20,15,10,5,30,60,75,80,65,40,25] },
+    monsoon:{ good:"Warm humid kharif; 600–1000 mm rainfall well distributed.", bad:"Waterlogging more than 48 hours kills plants. Leaf crinkle in dry weather.", cyclone:"Coastal Andhra and Tamil Nadu crops vulnerable during NE monsoon." },
+    harvest:{ days:"70–80", season:"September–October; February (Rabi in South)", tips:["Harvest in cool morning hours","70–80% pods should be mature","Hand-pick or use small harvester","Thresh immediately to avoid aflatoxin"] },
+    evolution:[
+      { yr:"~1500 BC", txt:"Vigna mungo originated in Indian subcontinent." },
+      { yr:"200 AD", txt:"Referenced in Ayurveda as 'masha'; used medicinally." },
+      { yr:"1970s", txt:"IARI develops T-9 and Krishna varieties." },
+      { yr:"2000s", txt:"Pant U-19 and KU-300 dominate production in India." },
+      { yr:"2020s", txt:"Urad dal market value highest among all pulses due to demand." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, thrips","Imidacloprid 200SL – 0.25 ml/L, jassids","Carbendazim 50WP – 1 g/L, powdery mildew","Mancozeb 75WP – 2 g/L, anthracnose","Propiconazole 25EC – 1 ml/L, leaf spot","Acephate 75SP – 1.5 g/L, whitefly"],
+    pests:[
+      { n:"Yellow Mosaic Virus", d:"Most destructive; whitefly transmitted. Entire plant mosaic.", c:"Grow resistant varieties; control whitefly." },
+      { n:"Pod Borer", d:"Feeds on flowers and developing pods.", c:"Spray Chlorpyrifos + Cypermethrin." },
+      { n:"Leaf Crinkle Virus", d:"Puckered leaves, severe stunting.", c:"Remove infected plants at early stage." },
+      { n:"Powdery Mildew", d:"White powdery coating on leaves.", c:"Apply Carbendazim or Wettable Sulfur." }
+    ],
+    states:[
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:22 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:18 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:16 },
+      { n:"Madhya Pradesh",lat:22.9734,lng:78.6569,share:12 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:10 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:8 }
+    ],
+    nutrition:[
+      { n:"Protein",   v:"25.2 g", pct:50, b:"Complete protein for vegetarians" },
+      { n:"Fiber",     v:"18.3 g", pct:73, b:"Highest fiber in common pulses" },
+      { n:"Iron",      v:"7.6 mg", pct:42, b:"Best for anemia prevention" },
+      { n:"Calcium",   v:"138 mg", pct:14, b:"Dairy alternative for calcium" },
+      { n:"Potassium", v:"983 mg", pct:21, b:"Electrolyte balance" },
+      { n:"Folate",    v:"216 µg", pct:54, b:"Essential for pregnancy" },
+      { n:"Niacin",    v:"1.5 mg", pct:9,  b:"Energy from food" },
+      { n:"Phosphorus",v:"379 mg", pct:30, b:"Bone & teeth formation" }
+    ]
+  },
+
+  lentil: {
+    name:"Lentil", category:"Pulse",
+    tip:"Apply 15 kg P2O5/ha at sowing. Lentil responds to phosphorus better than other pulses.",
+    image:"https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?w=1600",
+    stats:[{ v:"0.8–1.5 t/ha", l:"Avg Yield" },{ v:"₹6,000", l:"MSP/q" },{ v:"110–130d", l:"Duration" }],
+    production:{ total:"1.6 MT", rank:4 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[65,75,40,10,5,5,5,5,20,45,70,60] },
+    monsoon:{ good:"Rabi crop. Cool dry weather (Oct–Apr) with 200–400 mm rainfall.", bad:"Late rains cause rust epidemic. Temperature above 32°C causes flower drop.", cyclone:"Not significantly affected; inland Rabi crop." },
+    harvest:{ days:"110–130", season:"March–April", tips:["Harvest when 80% pods turn yellowish","Early morning prevents pod shattering","Windrow, dry 3–5 days, then thresh","Clean seed to remove weed seeds"] },
+    evolution:[
+      { yr:"~8000 BC", txt:"Lens culinaris earliest domesticated legume; Middle East origin." },
+      { yr:"3500 BC", txt:"Common in Indus Valley Civilization diet." },
+      { yr:"1000 AD", txt:"Red masoor dal becomes staple across South Asia." },
+      { yr:"1980s", txt:"PL-406 and DPL-15 varieties developed by IARI for India." },
+      { yr:"2010s", txt:"Pant L-4 shows 40% higher yield than older varieties." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, pod borer","Carbendazim 50WP – 1 g/L, wilt","Mancozeb 75WP – 2 g/L, rust","Propiconazole 25EC – 1 ml/L, grey mould","Imidacloprid 200SL – 0.25 ml/L, aphids","Metalaxyl – 2 g/L, downy mildew"],
+    pests:[
+      { n:"Lentil Aphid", d:"Heavy colonies cause severe yellowing and stunting.", c:"Spray Dimethoate or Imidacloprid." },
+      { n:"Rust (Uromyces)", d:"Orange-brown pustules on pods and leaves.", c:"Apply Mancozeb 75WP at first symptom." },
+      { n:"Root Rot", d:"Rotting of roots and collar region in wet soils.", c:"Seed treatment with Trichoderma viride." },
+      { n:"Thrips", d:"Silvering of leaves, curled pods.", c:"Spray Spinosad at flowering stage." }
+    ],
+    states:[
+      { n:"Madhya Pradesh",lat:22.9734,lng:78.6569,share:40 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:26 },
+      { n:"Bihar",lat:25.0961,lng:85.3131,share:14 },
+      { n:"West Bengal",lat:22.9868,lng:87.8550,share:8 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:7 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:5 }
+    ],
+    nutrition:[
+      { n:"Protein",    v:"25.8 g", pct:52, b:"High protein, low fat legume" },
+      { n:"Fiber",      v:"10.7 g", pct:43, b:"Heart health champion" },
+      { n:"Iron",       v:"7.5 mg", pct:42, b:"Iron-rich vegetarian food" },
+      { n:"Folate",     v:"479 µg", pct:120,b:"Pre-pregnancy nutrition" },
+      { n:"Potassium",  v:"677 mg", pct:14, b:"Blood pressure control" },
+      { n:"Manganese",  v:"1.3 mg", pct:57, b:"Antioxidant cofactor" },
+      { n:"Phosphorus", v:"356 mg", pct:28, b:"Energy production" },
+      { n:"Vitamin B1", v:"0.87 mg",pct:73, b:"Carb metabolism" }
+    ]
+  },
+
+  pomegranate: {
+    name:"Pomegranate", category:"Fruit",
+    tip:"Drip irrigation with fertigation saves 40% water and increases fruit quality.",
+    image:"https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=1600",
+    stats:[{ v:"15–20 t/ha", l:"Avg Yield" },{ v:"₹80–100/kg", l:"Market Rate" },{ v:"5–8 months", l:"Fruit Dev." }],
+    production:{ total:"3 MT", rank:1 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[60,70,75,65,50,40,30,35,55,80,85,70] },
+    monsoon:{ good:"Light rainfall during fruit development. Dry weather at harvest improves color.", bad:"Rain at harvest causes fruit cracking. Humidity causes bacterial blight epidemic.", cyclone:"Mature fruit damaged by strong winds; orchard damage in AP and Karnataka." },
+    harvest:{ days:"150–180", season:"Aug–Oct (Mrig); Jan–Mar (Ambe)", tips:["Harvest when fruit turns red-pink and metallic sound on tapping","Use pruning shears; avoid hand pulling","Grade by size and color","Store at 5°C for up to 2 months"] },
+    evolution:[
+      { yr:"~4000 BC", txt:"Punica granatum originated in Iran and Northern India." },
+      { yr:"700 BC", txt:"Mentioned in ancient texts as symbol of fertility and prosperity." },
+      { yr:"1600s", txt:"Spread to America by Spanish missionaries." },
+      { yr:"2000s", txt:"Maharashtra Bhagwa and Arakta varieties become commercial success." },
+      { yr:"2015+", txt:"India becomes world's 2nd largest pomegranate producer." }
+    ],
+    pesticides:["Imidacloprid 200SL – 0.3 ml/L, aphids","Chlorpyrifos 20EC – 2 ml/L, stem borer","Copper oxychloride 50WP – 3 g/L, bacterial blight","Mancozeb 75WP – 2 g/L, fruit rot","Dimethoate 30EC – 2 ml/L, leaf curl","Tebuconazole 25WG – 1 g/L, wilt"],
+    pests:[
+      { n:"Pomegranate Butterfly", d:"Larvae bore into fruits; 80–90% loss if unchecked.", c:"Bag young fruits with paper bags; spray Chlorpyrifos." },
+      { n:"Thrips", d:"Flower and fruit scarring; crinkled leaves.", c:"Spray Spinosad 45SC or Fipronil." },
+      { n:"Bacterial Blight", d:"Water-soaked lesions on leaves, fruit, and branches.", c:"Apply Copper oxychloride 3g/L weekly." },
+      { n:"Aphids", d:"Curled shoot tips; sooty mold secondary infestation.", c:"Spray Imidacloprid or Thiamethoxam." }
+    ],
+    states:[
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:60 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:15 },
+      { n:"Gujarat",lat:22.2587,lng:71.1924,share:10 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:8 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:5 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:2 }
+    ],
+    nutrition:[
+      { n:"Vitamin C",   v:"10.2 mg", pct:11, b:"Powerful antioxidant" },
+      { n:"Fiber",       v:"4 g",     pct:16, b:"Gut microbiome support" },
+      { n:"Potassium",   v:"236 mg",  pct:5,  b:"Anti-inflammatory" },
+      { n:"Folate",      v:"38 µg",   pct:10, b:"Cell regeneration" },
+      { n:"Vitamin K",   v:"16.4 µg", pct:14, b:"Blood clotting" },
+      { n:"Antioxidants",v:"High",    pct:90, b:"Cancer & heart protection" },
+      { n:"Punicalagins", v:"Unique", pct:80, b:"Strongest plant antioxidant" },
+      { n:"Calories",    v:"83 kcal", pct:4,  b:"Low-calorie superfood" }
+    ]
+  },
+
+  banana: {
+    name:"Banana", category:"Fruit",
+    tip:"Apply pseudostem of last crop as mulch — releases 5 kg K/plant.",
+    image:"https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=1600",
+    stats:[{ v:"30–40 t/ha", l:"Avg Yield" },{ v:"₹15–25/kg", l:"Farm Gate" },{ v:"11–15 months", l:"Duration" }],
+    production:{ total:"34 MT", rank:1 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[50,55,60,65,70,75,80,85,85,80,65,55] },
+    monsoon:{ good:"Humid tropics 1200–2500 mm/year; no seasonal drought stress.", bad:"Wind above 80 km/h causes pseudostem toppling. Flooding causes Panama wilt explosion.", cyclone:"Major threat in Tamil Nadu and Kerala coastal banana belts." },
+    harvest:{ days:"330–365", season:"Round the year", tips:["Harvest at 75% maturity (green-mature stage)","Cut bunch with 30 cm peduncle","Cushion bunches during transport","Ripen with ethylene at 18–20°C"] },
+    evolution:[
+      { yr:"~8000 BC", txt:"Musa acuminata first cultivated in Papua New Guinea/SE Asia." },
+      { yr:"600 AD", txt:"Banana reaches India as commercial crop; Cavendish precursors grown." },
+      { yr:"1950s", txt:"Gros Michel variety wiped out by Panama Fusarium wilt." },
+      { yr:"1960s", txt:"Cavendish (Grand Naine) becomes global commercial standard." },
+      { yr:"2000s", txt:"India's Robusta, Poovan and Grand Naine dominate 27% world production." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – soil drench, weevil","Carbendazim 50WP – 1 g/L, Panama wilt","Copper oxychloride – 3 g/L, Sigatoka leaf spot","Propiconazole 25EC – 1 ml/L, Black Sigatoka","Imidacloprid 200SL – 0.3 ml/L, aphids","Mancozeb 75WP – 2 g/L, bunch rot"],
+    pests:[
+      { n:"Banana Weevil", d:"Bores into corm; tunneling kills entire plant.", c:"Apply Chlorpyrifos soil drench + remove infested plants." },
+      { n:"Panama Wilt (Fusarium)", d:"Yellowing and splitting of pseudostem; fatal disease.", c:"Grow TR4-resistant varieties; disinfect soil." },
+      { n:"Sigatoka Leaf Spot", d:"Brown banana-shaped spots on leaves; weakens plant.", c:"Spray Propiconazole or Mancozeb every 3 weeks." },
+      { n:"Aphids", d:"Bunchy top virus vector; causes rosette of leaves.", c:"Rogue infected plants; spray Imidacloprid." }
+    ],
+    states:[
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:25 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:22 },
+      { n:"Gujarat",lat:22.2587,lng:71.1924,share:15 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:12 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:10 },
+      { n:"Madhya Pradesh",lat:22.9734,lng:78.6569,share:8 }
+    ],
+    nutrition:[
+      { n:"Potassium",  v:"358 mg", pct:8,  b:"Best natural electrolyte — athlete's food" },
+      { n:"Carbs",      v:"23 g",   pct:8,  b:"Instant energy (natural sugars)" },
+      { n:"Vitamin B6", v:"0.37 mg",pct:22, b:"Mood regulation (serotonin precursor)" },
+      { n:"Fiber",      v:"2.6 g",  pct:10, b:"Gut-friendly prebiotic" },
+      { n:"Vitamin C",  v:"8.7 mg", pct:10, b:"Collagen synthesis" },
+      { n:"Magnesium",  v:"27 mg",  pct:6,  b:"Nerve & muscle function" },
+      { n:"Dopamine",   v:"Unique", pct:50, b:"Natural mood booster" },
+      { n:"Calories",   v:"89 kcal",pct:4,  b:"Ideal pre-workout snack" }
+    ]
+  },
+
+  mango: {
+    name:"Mango", category:"Fruit",
+    tip:"Apply 1 kg KNO3 spray during October to induce uniform flowering in Alphonso.",
+    image:"https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?w=1600",
+    stats:[{ v:"10–15 t/ha", l:"Avg Yield" },{ v:"₹40–200/kg", l:"Market Rate" },{ v:"4–5 months", l:"Fruit Dev." }],
+    production:{ total:"24 MT", rank:1 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[70,75,65,55,45,20,10,10,15,30,50,65] },
+    monsoon:{ good:"Dry weather Dec–Feb promotes good flowering. Moderate rain in May.", bad:"Rain during flowering causes anthracnose; humid weather during fruit ripening causes mango malformation.", cyclone:"Cyclone Amphan-type storms flatten orchards in Bengal & Odisha." },
+    harvest:{ days:"120–150", season:"April–July (variety-dependent)", tips:["Pick with stalk intact to prevent sap burn","Harvest at right maturity index (specific gravity 1.01–1.02)","Avoid bruising; use padded containers","Pre-cool at 12–13°C for export quality"] },
+    evolution:[
+      { yr:"~4000 BC", txt:"Mangifera indica domesticated in Indo-Myanmar region." },
+      { yr:"~400 BC", txt:"Sanskrit texts describe 'Amra'; Buddhist monks spread cultivation." },
+      { yr:"1500s", txt:"Portuguese take Alphonso to Goa; Mughal emperors plant 100,000 trees." },
+      { yr:"1800s", txt:"Alphonso, Dasheri, Langra become regional varieties of note." },
+      { yr:"2000s", txt:"GI Tag for Alphonso; India exports to 100+ countries." }
+    ],
+    pesticides:["Mancozeb 75WP – 3 g/L, anthracnose","Carbendazim 50WP – 1 g/L, powdery mildew","Imidacloprid 200SL – 0.3 ml/L, mango hopper","Dimethoate 30EC – 2 ml/L, mealybugs","Copper oxychloride – 3 g/L, bacterial spot","Chlorpyrifos 20EC – 2 ml/L, mango stem borer"],
+    pests:[
+      { n:"Mango Hopper", d:"Sucks sap from flowers and leaves; most damaging pest in flowering.", c:"Spray Imidacloprid or Thiamethoxam at panicle emergence." },
+      { n:"Fruit Fly (Bactrocera)", d:"Maggots inside fruit; entire crop can be lost.", c:"Use methyl eugenol traps + Malathion bait spray." },
+      { n:"Mango Mealybug", d:"Cottony white colonies; sooty mold follows.", c:"Apply banding with grease on trunk; spray Dimethoate." },
+      { n:"Anthracnose", d:"Black lesions on fruits and flowers in humid weather.", c:"Apply Mancozeb 75WP weekly at flowering." }
+    ],
+    states:[
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:24 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:22 },
+      { n:"Bihar",lat:25.0961,lng:85.3131,share:12 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:10 },
+      { n:"Gujarat",lat:22.2587,lng:71.1924,share:8 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:8 }
+    ],
+    nutrition:[
+      { n:"Vitamin C",  v:"36.4 mg", pct:40, b:"Boosts immunity & skin collagen" },
+      { n:"Vitamin A",  v:"54 µg",   pct:6,  b:"Eye health, night vision" },
+      { n:"Folate",     v:"43 µg",   pct:11, b:"Cell growth support" },
+      { n:"Fiber",      v:"1.6 g",   pct:6,  b:"Digestive health" },
+      { n:"Potassium",  v:"168 mg",  pct:4,  b:"Heart muscle function" },
+      { n:"Vitamin E",  v:"0.9 mg",  pct:6,  b:"Antioxidant protection" },
+      { n:"Vitamin K",  v:"4.2 µg",  pct:4,  b:"Blood clotting" },
+      { n:"Calories",   v:"60 kcal", pct:3,  b:"Low calorie tropical treat" }
+    ]
+  },
+
+  grapes: {
+    name:"Grapes", category:"Fruit",
+    tip:"Gibberellic acid 20 ppm spray at berry formation improves berry size by 30%.",
+    image:"https://images.unsplash.com/photo-1537640538966-79f369143f8f?w=1600",
+    stats:[{ v:"20–30 t/ha", l:"Avg Yield" },{ v:"₹30–80/kg", l:"Farm Gate" },{ v:"120–150d", l:"Fruit Dev." }],
+    production:{ total:"3.1 MT", rank:12 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[75,80,70,50,30,15,10,10,20,45,65,75] },
+    monsoon:{ good:"Dry continental climate; 450–900 mm rain concentrated before budbreak.", bad:"Rain during harvest causes berry cracking and botrytis bunch rot.", cyclone:"Limited risk; grapes grown in dry interior Maharashtra." },
+    harvest:{ days:"120–150", season:"Jan–Mar (main); July (second)", tips:["Check brix (sugar) level — 18–22° for table grapes","Cut bunches with sharp secateurs in early morning","Handle gently to preserve bloom","Store at 0–1°C under SO2 pads for long storage"] },
+    evolution:[
+      { yr:"~6000 BC", txt:"Vitis vinifera domesticated in South Caucasus / Fertile Crescent." },
+      { yr:"300 BC", txt:"Grapes mentioned in Arthashastra; vineyards in Taxila." },
+      { yr:"1800s", txt:"British introduce wine grapes to Pune hills experimentally." },
+      { yr:"1980s", txt:"Grape revolution: Nashik becomes India's wine capital." },
+      { yr:"2010s", txt:"Thompson Seedless exports from India reach 100,000 MT/year." }
+    ],
+    pesticides:["Mancozeb 75WP – 2 g/L, downy mildew","Sulfur 80WP – 3 g/L, powdery mildew","Metalaxyl-M+Mancozeb – 2.5 g/L, downy mildew","Imidacloprid 200SL – 0.3 ml/L, mealybug","Chlorpyrifos 20EC – 2 ml/L, thrips","Tebuconazole 25WG – 1 g/L, botrytis"],
+    pests:[
+      { n:"Grape Mealybug", d:"Wax-covered colonies; virus vector; sooty mold.", c:"Apply Buprofezin + spray Imidacloprid." },
+      { n:"Downy Mildew", d:"White powdery growth on underside; most damaging disease.", c:"Spray Metalaxyl + Mancozeb preventively." },
+      { n:"Botrytis (Grey Mold)", d:"Bunch rot in humid conditions; devastating at harvest.", c:"Apply Tebuconazole; improve vineyard aeration." },
+      { n:"Thrips", d:"Silvery scarring on berries; downgrade for export.", c:"Spray Spinosad at berry set stage." }
+    ],
+    states:[
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:75 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:12 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:7 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:4 },
+      { n:"Himachal Pradesh",lat:31.1048,lng:77.1734,share:1.5 },
+      { n:"Others",lat:20.5937,lng:78.9629,share:0.5 }
+    ],
+    nutrition:[
+      { n:"Vitamin C",  v:"3.2 mg",  pct:4,  b:"Antioxidant; immune support" },
+      { n:"Vitamin K",  v:"14.6 µg", pct:12, b:"Blood clotting & bone health" },
+      { n:"Potassium",  v:"191 mg",  pct:4,  b:"Blood pressure regulation" },
+      { n:"Resveratrol",v:"Unique",  pct:80, b:"Anti-aging, heart protection" },
+      { n:"Anthocyanins",v:"High",   pct:70, b:"Anti-inflammatory (in red grapes)" },
+      { n:"Fiber",      v:"0.9 g",   pct:4,  b:"Mild digestive aid" },
+      { n:"Calories",   v:"69 kcal", pct:3,  b:"Moderate energy fruit" },
+      { n:"Quercetin",  v:"High",    pct:40, b:"Allergy & inflammation relief" }
+    ]
+  },
+
+  watermelon: {
+    name:"Watermelon", category:"Fruit",
+    tip:"Grow on black plastic mulch to conserve moisture and control weeds.",
+    image:"https://images.unsplash.com/photo-1563114773-84221bd62daa?w=1600",
+    stats:[{ v:"25–40 t/ha", l:"Avg Yield" },{ v:"₹5–10/kg", l:"Farm Gate" },{ v:"70–90d", l:"Duration" }],
+    production:{ total:"5.5 MT", rank:5 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[20,30,60,80,70,40,25,20,25,40,30,20] },
+    monsoon:{ good:"Warm dry summer crop; 400–600 mm through drip irrigation.", bad:"Excess rain causes fruit cracking and fusarium crown rot.", cyclone:"Limited risk; summer crop harvested before monsoon." },
+    harvest:{ days:"70–90", season:"April–June", tips:["Tap fruit for hollow sound indicating ripeness","Check tendril near fruit — dried tendril = ripe","Fruit should feel heavy for size","Store at 10–15°C for 2–3 weeks"] },
+    evolution:[
+      { yr:"~4000 BC", txt:"Citrullus lanatus originated in Kalahari Desert, Africa." },
+      { yr:"1600s", txt:"Arrived in India via Persian and Arab traders." },
+      { yr:"1950s", txt:"Cultivation expands in Indo-Gangetic plains." },
+      { yr:"2000s", txt:"Seedless hybrid varieties developed for premium markets." },
+      { yr:"2015+", txt:"Karnataka and Uttar Pradesh become leading producers." }
+    ],
+    pesticides:["Mancozeb 75WP – 2 g/L, downy mildew","Chlorpyrifos 20EC – 2 ml/L, aphids","Imidacloprid 200SL – 0.25 ml/L, whitefly","Carbendazim 50WP – 1 g/L, powdery mildew","Metalaxyl – 2 g/L, Phytophthora crown rot","Spinosad 45SC – 0.3 ml/L, thrips"],
+    pests:[
+      { n:"Red Pumpkin Beetle", d:"Adults eat seedling leaves; grubs damage roots.", c:"Apply Chlorpyrifos dust around base of plants." },
+      { n:"Aphids", d:"Colonies on leaves; transmit mosaic viruses.", c:"Spray Imidacloprid @ 0.25 ml/L." },
+      { n:"Downy Mildew", d:"Angular yellow spots on upper leaf surface.", c:"Apply Metalaxyl + Mancozeb preventively." },
+      { n:"Fusarium Crown Rot", d:"Vine collapse from crown; devastating in wet soils.", c:"Seed treatment + soil drench with Carbendazim." }
+    ],
+    states:[
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:20 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:18 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:15 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:12 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:10 },
+      { n:"West Bengal",lat:22.9868,lng:87.8550,share:8 }
+    ],
+    nutrition:[
+      { n:"Water Content",v:"92%",    pct:92, b:"Ultimate hydration food" },
+      { n:"Lycopene",    v:"6.1 mg",  pct:60, b:"Prostate cancer prevention" },
+      { n:"Vitamin C",  v:"8.1 mg",   pct:9,  b:"Skin health" },
+      { n:"Vitamin A",  v:"28 µg",    pct:3,  b:"Eye health" },
+      { n:"Citrulline", v:"Unique",   pct:80, b:"Natural performance enhancer" },
+      { n:"Potassium",  v:"112 mg",   pct:2,  b:"Heart rhythm" },
+      { n:"Magnesium",  v:"10 mg",    pct:2,  b:"Muscle relaxation" },
+      { n:"Calories",   v:"30 kcal",  pct:2,  b:"Lowest calorie fruit!" }
+    ]
+  },
+
+  muskmelon: {
+    name:"Muskmelon", category:"Fruit",
+    tip:"Remove first 5–6 leaves to encourage strong lateral branch growth and fruit set.",
+    image:"https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=1600",
+    stats:[{ v:"15–25 t/ha", l:"Avg Yield" },{ v:"₹10–20/kg", l:"Farm Gate" },{ v:"80–100d", l:"Duration" }],
+    production:{ total:"1.2 MT", rank:8 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[20,35,65,80,70,35,20,15,25,45,30,20] },
+    monsoon:{ good:"Hot dry climate with irrigation. High temperature (35–40°C) improves sugar.", bad:"Rain cracks fruit skin and causes soil-borne disease outbreaks.", cyclone:"Low risk; primarily summer crop." },
+    harvest:{ days:"80–100", season:"April–June", tips:["Fruit slips easily from vine at maturity","Characteristic fragrance develops at ripeness","Harvest in cool morning hours","Store at 2–5°C for 1–2 weeks"] },
+    evolution:[
+      { yr:"~4000 BC", txt:"Cucumis melo domesticated in Africa or South/Central Asia." },
+      { yr:"1500 BC", txt:"Ancient Egyptians depicted melons in tomb paintings." },
+      { yr:"1200 AD", txt:"Mughals prized Dussehra Kharbooja; Babur wrote about it." },
+      { yr:"1980s", txt:"Hybrid varieties (Pusa Sarda, MH-7) developed by IARI." },
+      { yr:"2010s", txt:"Protected cultivation in polyhouses expands in Rajasthan." }
+    ],
+    pesticides:["Mancozeb 75WP – 2 g/L, downy mildew","Chlorpyrifos 20EC – 2 ml/L, beetles","Imidacloprid – 0.25 ml/L, aphids","Carbendazim – 1 g/L, powdery mildew","Metalaxyl – 2 g/L, Pythium root rot","Sulfur dust – 25 kg/ha, mites"],
+    pests:[
+      { n:"Red Pumpkin Beetle", d:"Devours cotyledon and young leaves.", c:"Apply Malathion dust around seedlings." },
+      { n:"Aphids", d:"Mosaic virus vector; stunts plant growth.", c:"Spray Dimethoate 30EC @ 2 ml/L." },
+      { n:"Powdery Mildew", d:"White powdery coating; reduces fruit quality.", c:"Spray Wettable Sulfur or Triadimefon." },
+      { n:"Melon Fruit Fly", d:"Maggots inside fruit; must be managed from fruit set.", c:"Use protein bait traps + Malathion spray." }
+    ],
+    states:[
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:22 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:18 },
+      { n:"Punjab",lat:31.1471,lng:75.3412,share:14 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:12 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:10 },
+      { n:"Haryana",lat:29.0588,lng:76.0856,share:8 }
+    ],
+    nutrition:[
+      { n:"Vitamin C",  v:"36.7 mg", pct:41, b:"Top Vitamin C among melons" },
+      { n:"Vitamin A",  v:"169 µg",  pct:19, b:"Night vision, skin health" },
+      { n:"Folate",     v:"21 µg",   pct:5,  b:"Cell growth" },
+      { n:"Potassium",  v:"267 mg",  pct:6,  b:"Electrolyte replenishment" },
+      { n:"Water",      v:"90%",     pct:90, b:"Cooling effect in summer" },
+      { n:"Beta-carotene",v:"2020 µg",pct:67,b:"Cancer-protective antioxidant" },
+      { n:"Fiber",      v:"0.9 g",   pct:4,  b:"Light digestive support" },
+      { n:"Calories",   v:"34 kcal", pct:2,  b:"Ultra-low calorie fruit" }
+    ]
+  },
+
+  apple: {
+    name:"Apple", category:"Fruit",
+    tip:"Maintain 40 cm gap between fruits through hand thinning for premium size.",
+    image:"https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=1600",
+    stats:[{ v:"10–20 t/ha", l:"Avg Yield" },{ v:"₹40–120/kg", l:"Market Rate" },{ v:"5–7 months", l:"Fruit Dev." }],
+    production:{ total:"2.8 MT", rank:3 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[5,10,25,55,75,85,90,85,70,45,15,5] },
+    monsoon:{ good:"Winter chill 1000+ hours below 7°C needed for good fruit set.", bad:"Early spring frost destroys blossom. Excessive hail damages fruit surface.", cyclone:"Hailstorms in June–July in HP cause major losses." },
+    harvest:{ days:"150–190", season:"August–October", tips:["Test starch pattern with iodine — clear starch = harvest ready","Harvest Delicious first, then Fuji, then Gala","Handle individually; do not drop","Store in CA chambers at -1°C for 6–8 months"] },
+    evolution:[
+      { yr:"~6500 BC", txt:"Malus sieversii wild ancestor in Kazakhstan mountains." },
+      { yr:"1000 AD", txt:"Spread via Silk Road to Europe and Asia." },
+      { yr:"1890s", txt:"British introduce Red Delicious to Himachal Pradesh orchards." },
+      { yr:"1950s", txt:"HPKVV develops Ambri, Himachali Cream varieties for local climate." },
+      { yr:"2010s", txt:"Gala, Fuji, Royal Delicious dominate HP and J&K production." }
+    ],
+    pesticides:["Mancozeb 75WP – 3 g/L, scab","Captan 50WP – 3 g/L, fruit rot","Chlorpyrifos 20EC – 2 ml/L, codling moth","Imidacloprid 200SL – 0.3 ml/L, woolly aphid","Propiconazole 25EC – 1 ml/L, powdery mildew","Difenoconazole 25EC – 0.5 ml/L, fire blight"],
+    pests:[
+      { n:"Codling Moth", d:"Larvae tunnel into core of fruit; 'maggoty apple'.", c:"Use pheromone traps + Chlorpyrifos spray at egg hatch." },
+      { n:"Woolly Apple Aphid", d:"Waxy white colonies on branches; gall formation.", c:"Apply Imidacloprid soil drench or trunk spray." },
+      { n:"Apple Scab", d:"Olive-green velvety spots on fruit and leaves.", c:"Apply Mancozeb + Captan weekly during wet spring." },
+      { n:"Fire Blight", d:"Bacterial disease; shoots die back in shepherd's crook shape.", c:"Copper spray + prune 30cm below infection." }
+    ],
+    states:[
+      { n:"Himachal Pradesh",lat:31.1048,lng:77.1734,share:50 },
+      { n:"Jammu & Kashmir",lat:33.7782,lng:76.5762,share:35 },
+      { n:"Uttarakhand",lat:30.0668,lng:79.0193,share:9 },
+      { n:"Arunachal Pradesh",lat:28.2180,lng:94.7278,share:4 },
+      { n:"Nagaland",lat:26.1584,lng:94.5624,share:1 },
+      { n:"Others",lat:32.0,lng:76.0,share:1 }
+    ],
+    nutrition:[
+      { n:"Fiber",     v:"2.4 g",   pct:10, b:"Pectin lowers cholesterol" },
+      { n:"Vitamin C", v:"4.6 mg",  pct:5,  b:"Antioxidant protection" },
+      { n:"Potassium", v:"107 mg",  pct:2,  b:"Blood pressure balance" },
+      { n:"Quercetin", v:"High",    pct:60, b:"Anti-inflammatory, anti-cancer" },
+      { n:"Catechin",  v:"High",    pct:55, b:"Brain health" },
+      { n:"Chlorogenic acid",v:"High",pct:45,b:"Blood sugar regulation" },
+      { n:"Calories",  v:"52 kcal", pct:3,  b:"'An apple a day' — low calorie" },
+      { n:"Vitamin K", v:"2.2 µg",  pct:2,  b:"Bone health" }
+    ]
+  },
+
+  orange: {
+    name:"Orange", category:"Fruit",
+    tip:"Apply 250 g Ca(NO3)2 per tree at fruit development to prevent fruit drop.",
+    image:"https://images.unsplash.com/photo-1547514701-42782101795e?w=1600",
+    stats:[{ v:"10–20 t/ha", l:"Avg Yield" },{ v:"₹20–40/kg", l:"Market Rate" },{ v:"7–9 months", l:"Fruit Dev." }],
+    production:{ total:"13.5 MT", rank:2 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[50,45,35,25,20,25,35,50,65,75,70,60] },
+    monsoon:{ good:"Subtropical climate with slight moisture stress triggers flowering.", bad:"High humidity causes citrus canker and greening disease epidemics.", cyclone:"Orchards in Maharashtra and Andhra vulnerable to pre-harvest winds." },
+    harvest:{ days:"210–240", season:"November–February", tips:["Harvest when color is fully orange-yellow","Clip with 1 cm stalk to prevent disease entry","Grade by size: 48–64 mm for premium","Store at 4–8°C; relative humidity 85–90%"] },
+    evolution:[
+      { yr:"~2500 BC", txt:"Citrus sinensis originated in southern China." },
+      { yr:"400 AD", txt:"Arab traders spread oranges to Mediterranean and India." },
+      { yr:"1600s", txt:"Portuguese introduce sweet oranges; Nagpur mandarin developed." },
+      { yr:"1900s", txt:"Nagpur Santra gets geographical recognition as premium variety." },
+      { yr:"2010s", txt:"Processed juice industry grows; Nagpur supplies 70% India's oranges." }
+    ],
+    pesticides:["Copper oxychloride 50WP – 3 g/L, canker","Imidacloprid 200SL – 0.3 ml/L, leaf miner","Chlorpyrifos 20EC – 2 ml/L, citrus psylla","Dimethoate 30EC – 2 ml/L, scale insects","Mancozeb 75WP – 2 g/L, gummosis","Spiromesifen 22.9SC – 1 ml/L, mites"],
+    pests:[
+      { n:"Citrus Leaf Miner", d:"Silvery winding mines on leaves; stunts young shoots.", c:"Spray Imidacloprid at new flush emergence." },
+      { n:"Citrus Psylla", d:"Vector of Huanglongbing (greening disease); incurable.", c:"Spray Chlorpyrifos; rogue infected trees immediately." },
+      { n:"Scale Insects", d:"Encrusted on branches; sooty mold; weakens tree.", c:"Apply white oil + Dimethoate spray." },
+      { n:"Citrus Canker", d:"Bacterial; corky lesions on fruit and leaves.", c:"Spray Copper oxychloride 3g/L every 3 weeks." }
+    ],
+    states:[
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:30 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:22 },
+      { n:"Punjab",lat:31.1471,lng:75.3412,share:15 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:10 },
+      { n:"Himachal Pradesh",lat:31.1048,lng:77.1734,share:8 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:7 }
+    ],
+    nutrition:[
+      { n:"Vitamin C",  v:"53.2 mg", pct:59, b:"Highest common fruit Vitamin C" },
+      { n:"Fiber",      v:"2.4 g",   pct:10, b:"Pectin; heart health" },
+      { n:"Folate",     v:"30 µg",   pct:8,  b:"DNA repair" },
+      { n:"Potassium",  v:"181 mg",  pct:4,  b:"Heart rhythm" },
+      { n:"Calcium",    v:"40 mg",   pct:4,  b:"Bone strength" },
+      { n:"Flavonoids", v:"High",    pct:70, b:"Anti-cancer anti-inflammatory" },
+      { n:"Thiamine",   v:"0.09 mg", pct:7,  b:"Energy metabolism" },
+      { n:"Calories",   v:"47 kcal", pct:2,  b:"Low calorie citrus" }
+    ]
+  },
+
+  papaya: {
+    name:"Papaya", category:"Fruit",
+    tip:"Red Lady hybrid yields 100+ kg per plant/year under drip fertigation.",
+    image:"https://images.unsplash.com/photo-1526318896980-cf78c088247c?w=1600",
+    stats:[{ v:"40–60 t/ha", l:"Avg Yield" },{ v:"₹10–20/kg", l:"Farm Gate" },{ v:"9–12 months", l:"First Fruit" }],
+    production:{ total:"6.7 MT", rank:1 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[60,65,70,70,65,55,50,50,55,65,65,62] },
+    monsoon:{ good:"Tropical climate year-round; tolerates moderate rain well.", bad:"Waterlogging for >24 hours causes root rot and plant death.", cyclone:"Very susceptible to cyclone winds — tall plants snap easily." },
+    harvest:{ days:"270–365", season:"Round the year (planted March–September)", tips:["Harvest when 25–50% fruit surface turns yellow","Latex flow should have reduced significantly","Use long-handled picker for tall plants","Ripen at 25°C for 4–5 days after harvest"] },
+    evolution:[
+      { yr:"~2000 BC", txt:"Carica papaya native to southern Mexico and Central America." },
+      { yr:"1600s", txt:"Portuguese bring papaya to India via Goa." },
+      { yr:"1900s", txt:"Widely naturalized across tropical India." },
+      { yr:"1980s", txt:"Taiwan 786 and Pusa Giant varieties developed." },
+      { yr:"2010s", txt:"Red Lady hybrid revolutionizes papaya cultivation with dwarfism." }
+    ],
+    pesticides:["Imidacloprid 200SL – 0.3 ml/L, aphids/mealybug","Chlorpyrifos 20EC – 2 ml/L, fruit flies","Mancozeb 75WP – 2 g/L, anthracnose","Carbendazim 50WP – 1 g/L, Pythium root rot","Dimethoate 30EC – 2 ml/L, mites","Copper oxychloride – 3 g/L, bacterial spot"],
+    pests:[
+      { n:"Papaya Ring Spot Virus", d:"Aphid-transmitted; mosaic, ring spots on fruit — most feared disease.", c:"Remove infected plants; use PRSV-resistant varieties." },
+      { n:"Mealybug", d:"White waxy clusters on stem and fruit.", c:"Spray Imidacloprid or Buprofezin." },
+      { n:"Fruit Fly", d:"Maggots in ripening fruit; major export barrier.", c:"Protein bait sprays + methyl eugenol traps." },
+      { n:"Powdery Mildew", d:"White coating on leaves in dry season.", c:"Apply Wettable Sulfur 2 g/L." }
+    ],
+    states:[
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:25 },
+      { n:"Gujarat",lat:22.2587,lng:71.1924,share:18 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:14 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:12 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:10 },
+      { n:"Madhya Pradesh",lat:22.9734,lng:78.6569,share:8 }
+    ],
+    nutrition:[
+      { n:"Vitamin C",  v:"61.8 mg", pct:69, b:"Immune powerhouse" },
+      { n:"Vitamin A",  v:"47 µg",   pct:5,  b:"Skin and eye health" },
+      { n:"Papain",     v:"Unique",  pct:90, b:"Protein digestion enzyme (therapeutic)" },
+      { n:"Folate",     v:"37 µg",   pct:9,  b:"Prenatal health" },
+      { n:"Potassium",  v:"182 mg",  pct:4,  b:"Electrolyte balance" },
+      { n:"Fiber",      v:"1.7 g",   pct:7,  b:"Digestion improvement" },
+      { n:"Choline",    v:"6.1 mg",  pct:1,  b:"Brain development" },
+      { n:"Calories",   v:"43 kcal", pct:2,  b:"Very low calorie tropical fruit" }
+    ]
+  },
+
+  coconut: {
+    name:"Coconut", category:"Fruit",
+    tip:"Apply 200 g MgSO4 per palm at 6-month intervals to prevent yellowing.",
+    image:"https://images.unsplash.com/photo-1580984969071-a8da5656c2fb?w=1600",
+    stats:[{ v:"80–100 nuts/palm/yr", l:"Yield" },{ v:"₹20–35/nut", l:"Market Rate" },{ v:"6–7 months", l:"Fruit Dev." }],
+    production:{ total:"20B nuts/yr", rank:3 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[65,68,70,72,75,78,80,78,75,70,68,65] },
+    monsoon:{ good:"Coastal humid climate with 1200–2500 mm rain. Uniform distribution ideal.", bad:"Drought stress reduces nut setting. Waterlogging causes basal stem rot.", cyclone:"Most vulnerable crop to cyclone wind damage — palm falls easily." },
+    harvest:{ days:"365", season:"Year-round (harvest every 45 days)", tips:["Tender coconut at 7–8 months; copra at 12 months","Harvest with curved knife or machine","Never drop nuts from height","Tender coconuts stored at 10–15°C for 2–3 weeks"] },
+    evolution:[
+      { yr:"~3500 BC", txt:"Cocos nucifera probable origin in Indo-Pacific region." },
+      { yr:"~1000 AD", txt:"Arab and Malay traders spread coconut globally." },
+      { yr:"1500s", txt:"Portuguese establish coconut plantations along Malabar coast." },
+      { yr:"1950s", txt:"Hybrid varieties (VHC-1) developed by Coconut Research Institute, Kerala." },
+      { yr:"2020s", txt:"India 3rd largest producer; tender coconut water exports surge." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, rhinoceros beetle","Copper oxychloride – 3 g/L, bud rot","Mancozeb 75WP – 2 g/L, grey leaf spot","Imidacloprid – 200SL soil drench, scale","Buprofezin 25SC – mealybugs","Quinalphos 25EC – 2 ml/L, nut borer"],
+    pests:[
+      { n:"Coconut Rhinoceros Beetle", d:"Bores into crown; V-shaped cuts on fronds. Can kill palms.", c:"Apply Chlorpyrifos in crown; use pheromone traps." },
+      { n:"Red Palm Weevil", d:"Most destructive; larvae eat growing point inside crown.", c:"Inject Chlorpyrifos into holes; pheromone trap mass trapping." },
+      { n:"Eriophyid Mite", d:"Causes 'coconut mite'; buttons and young nuts drop.", c:"Spray wettable Sulfur + Monocrotophos." },
+      { n:"Bud Rot (Phytophthora)", d:"Heart leaf wilts; brownish rotting of spear leaf.", c:"Remove and burn infected tissues; apply Metalaxyl." }
+    ],
+    states:[
+      { n:"Kerala",lat:10.8505,lng:76.2711,share:38 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:28 },
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:16 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:10 },
+      { n:"Odisha",lat:20.9517,lng:85.0985,share:4 },
+      { n:"West Bengal",lat:22.9868,lng:87.8550,share:2 }
+    ],
+    nutrition:[
+      { n:"MCT Fat",    v:"33 g",    pct:50, b:"Brain energy & weight loss (fresh)" },
+      { n:"Fiber",      v:"9 g",     pct:36, b:"Highest fiber of all fruits" },
+      { n:"Manganese",  v:"1.5 mg",  pct:65, b:"Bone formation & antioxidant" },
+      { n:"Copper",     v:"0.44 mg", pct:49, b:"Iron absorption & nerve health" },
+      { n:"Selenium",   v:"10.1 µg", pct:18, b:"Thyroid function" },
+      { n:"Potassium",  v:"356 mg",  pct:8,  b:"Fluid balance" },
+      { n:"Calories",   v:"354 kcal",pct:18, b:"High energy dense food" },
+      { n:"Lauric Acid",v:"Unique",  pct:70, b:"Antimicrobial & cholesterol control" }
+    ]
+  },
+
+  cotton: {
+    name:"Cotton", category:"Cash Crop",
+    tip:"BT cotton saves 70% pesticide spray costs; check for pink bollworm from August.",
+    image:"https://images.unsplash.com/photo-1594750852563-5ed8d1e80c4b?w=1600",
+    stats:[{ v:"400–600 kg/ha", l:"Lint Yield" },{ v:"₹6,620", l:"MSP/q" },{ v:"180–200d", l:"Duration" }],
+    production:{ total:"8.5 MT lint", rank:2 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[10,5,5,10,25,55,80,90,85,70,40,15] },
+    monsoon:{ good:"Kharif crop needing 700–1200 mm rainfall; black cotton soils ideal.", bad:"Excess rain causes root rot and bollworm epidemic. Boll rot in humid weather.", cyclone:"Coastal AP, Telangana, and Gujarat affected by cyclone at boll stage." },
+    harvest:{ days:"180–200", season:"October–February (picked in multiple rounds)", tips:["Pick only fully opened white bolls","Avoid picking in wet weather","Keep pickings clean; no leaf trash","Ginning within 7 days for best fiber quality"] },
+    evolution:[
+      { yr:"~5000 BC", txt:"Gossypium arboreum domesticated in South Asia; world's first cotton." },
+      { yr:"2500 BC", txt:"Indus Valley people wove cotton textiles 4,500 years ago." },
+      { yr:"1600s", txt:"British East India Company makes India primary cotton supplier." },
+      { yr:"1970s", txt:"High-yielding Hybrid H-4 transforms cotton productivity." },
+      { yr:"2002", txt:"BT cotton introduced in India; pest control revolution." }
+    ],
+    pesticides:["Cypermethrin 25EC – 1 ml/L, bollworm","Imidacloprid 200SL – 0.3 ml/L, sucking pests","Chlorpyrifos 20EC – 2 ml/L, pink bollworm","Triazophos 40EC – 2 ml/L, boll weevil","Mancozeb 75WP – 2 g/L, Alternaria leaf spot","Emamectin benzoate 5SG – 0.4 g/L, American bollworm"],
+    pests:[
+      { n:"Pink Bollworm", d:"Larvae enter bolls; empty bolls; most destructive post-BT pest.", c:"Pheromone traps + Chlorpyrifos 20EC spray." },
+      { n:"Sucking Pests (Jassid/Thrips)", d:"Leaf curl, red leaf, reduced photosynthesis.", c:"Spray Imidacloprid or Acephate at 14-day intervals." },
+      { n:"American Bollworm", d:"Large green caterpillar eats developing bolls.", c:"Spray Emamectin benzoate or Spinosad." },
+      { n:"Whitefly", d:"Transmits cotton leaf curl virus (CLCuV); devastating in NW India.", c:"Spray Spiromesifen; grow resistant varieties." }
+    ],
+    states:[
+      { n:"Gujarat",lat:22.2587,lng:71.1924,share:35 },
+      { n:"Maharashtra",lat:19.7515,lng:75.7139,share:22 },
+      { n:"Telangana",lat:17.1232,lng:79.2088,share:14 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:8 },
+      { n:"Rajasthan",lat:27.0238,lng:74.2179,share:7 },
+      { n:"Punjab",lat:31.1471,lng:75.3412,share:6 }
+    ],
+    nutrition:[
+      { n:"Cottonseed Oil",v:"100%",  pct:40, b:"Cooking oil; high in linoleic acid" },
+      { n:"Cottonseed Protein",v:"22%",pct:44,b:"Animal feed; oil cake after ginning" },
+      { n:"Gossypol-free meal",v:"Unique",pct:30,b:"Human food protein after detox" },
+      { n:"Vitamin E",  v:"35 mg",   pct:233,b:"Antioxidant in cottonseed oil" },
+      { n:"Phytosterols",v:"High",   pct:50, b:"Cholesterol reduction" },
+      { n:"Cellulose",  v:"Pure",    pct:100,b:"Medical cotton, textiles, paper" },
+      { n:"Linoleic acid",v:"50%",   pct:80, b:"Essential omega-6 fatty acid" },
+      { n:"Palmitic acid",v:"22%",   pct:30, b:"Structural fatty acid" }
+    ]
+  },
+
+  jute: {
+    name:"Jute", category:"Cash Crop",
+    tip:"Ret (water-soak) jute stalks in running water for 20 days for cleaner fibre.",
+    image:"https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1600",
+    stats:[{ v:"2–3 t/ha", l:"Fibre Yield" },{ v:"₹4,500", l:"MSP/q" },{ v:"100–120d", l:"Duration" }],
+    production:{ total:"9.5 MT", rank:2 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[5,5,15,35,60,80,75,55,40,20,8,5] },
+    monsoon:{ good:"Kharif; needs warm humid climate 500–1000 mm during growing season.", bad:"Prolonged drought stunts growth. Waterlogging increases stem rot.", cyclone:"Jute in West Bengal and Assam affected by Bay of Bengal cyclones." },
+    harvest:{ days:"100–120", season:"July–August", tips:["Harvest at 50% flowering for best fibre quality","Bundle and ret in water immediately","Wash retted fibre and dry in shade","Longer retting = softer fibre but weaker strength"] },
+    evolution:[
+      { yr:"~3000 BC", txt:"Corchorus capsularis native to Asia; used in Bengal since ancient times." },
+      { yr:"1793", txt:"East India Company begins commercial jute export from Bengal." },
+      { yr:"1855", txt:"First jute mill established in Rishra, West Bengal." },
+      { yr:"1947", txt:"Partition splits jute mills (India) from jute fields (East Pakistan/Bangladesh)." },
+      { yr:"2010s", txt:"Mandatory jute packaging law revives Indian jute industry." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, stem weevil","Carbendazim 50WP – 1 g/L, stem rot","Mancozeb 75WP – 2 g/L, anthracnose","Dimethoate 30EC – 2 ml/L, red spider mite","Thiram 75WP – seed treatment","Endosulfan 35EC – 2 ml/L, hairy caterpillar"],
+    pests:[
+      { n:"Jute Stem Weevil", d:"Adults girdle stem; weakens and breaks plant.", c:"Spray Chlorpyrifos 20EC at 30–40 days." },
+      { n:"Yellow Mite", d:"Causes 'tossa jute mosaic'; leaves turn yellow and crinkle.", c:"Apply Dicofol 18.5EC or Sulfur dust." },
+      { n:"Hairy Caterpillar", d:"Defoliates plants rapidly in gregarious phase.", c:"Collect and destroy egg masses; spray Chlorpyrifos." },
+      { n:"Stem Rot (Macrophomina)", d:"Brown-grey lesions on stem base; plant collapse.", c:"Seed treatment + Carbendazim drench." }
+    ],
+    states:[
+      { n:"West Bengal",lat:22.9868,lng:87.8550,share:55 },
+      { n:"Bihar",lat:25.0961,lng:85.3131,share:18 },
+      { n:"Assam",lat:26.2006,lng:92.9376,share:12 },
+      { n:"Odisha",lat:20.9517,lng:85.0985,share:7 },
+      { n:"Uttar Pradesh",lat:26.8467,lng:80.9462,share:5 },
+      { n:"Tripura",lat:23.9408,lng:91.9882,share:3 }
+    ],
+    nutrition:[
+      { n:"Jute Leaf (Protein)",v:"4.5 g",pct:9,b:"Leaves eaten as vegetable in Africa" },
+      { n:"Jute Leaf (Iron)", v:"4.2 mg",pct:23,b:"Anemia prevention from leaves" },
+      { n:"Jute Leaf (Ca)",  v:"203 mg",pct:20,b:"Strong bones from young leaves" },
+      { n:"Jute Leaf (VitC)",v:"44 mg", pct:49,b:"Antioxidant from leaves" },
+      { n:"Fiber (industrial)",v:"100%",pct:100,b:"Eco-friendly packaging, textile" },
+      { n:"Jute Seed Oil",  v:"Trace",  pct:10, b:"Edible oil potential" },
+      { n:"Chlorophyll",    v:"High",   pct:40, b:"Anti-inflammatory leaf extract" },
+      { n:"Beta-carotene",  v:"12 mg",  pct:133,b:"Highest beta-carotene vegetable" }
+    ]
+  },
+
+  coffee: {
+    name:"Coffee", category:"Cash Crop",
+    tip:"Shade grown coffee under silver oak trees produces 25% more aromatic beans.",
+    image:"https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=1600",
+    stats:[{ v:"1–1.5 t/ha", l:"Green Bean Yield" },{ v:"₹180–320/kg", l:"Farm Gate" },{ v:"3–4 years", l:"First Harvest" }],
+    production:{ total:"0.37 MT", rank:6 },
+    growth:{ labels:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], data:[20,25,30,40,55,60,70,80,85,75,50,30] },
+    monsoon:{ good:"Western Ghats receives 1500–3000 mm; perfect for Arabica and Robusta.", bad:"Drought at berry development causes hollow beans. Excess rain causes white stem borer surge.", cyclone:"Kerala and Karnataka coffee estates vulnerable to SW monsoon cyclones." },
+    harvest:{ days:"9–11 months (annual)", season:"November–February", tips:["Pick only bright red cherries (selective picking)","Never strip-harvest — reduces quality severely","Process within 24 hours using wet/dry method","Dry parchment to 11–12% moisture for milling"] },
+    evolution:[
+      { yr:"~800 AD", txt:"Coffea arabica discovered in Ethiopia by goat herder Kaldi legend." },
+      { yr:"1600 AD", txt:"Baba Budan smuggles 7 coffee beans from Yemen to Chikmagalur, Karnataka." },
+      { yr:"1800s", txt:"British establish large coffee estates in Coorg and Nilgiris." },
+      { yr:"1940s", txt:"Coffee Board of India established; Robusta introduced to Kerala." },
+      { yr:"2010s", txt:"Indian specialty coffee wins international cupping competitions." }
+    ],
+    pesticides:["Chlorpyrifos 20EC – 2 ml/L, white stem borer","Imidacloprid 200SL – 0.3 ml/L, green scale","Copper oxychloride – 3 g/L, leaf rust","Carbendazim 50WP – 1 g/L, anthracnose","Propiconazole 25EC – 1 ml/L, berry borer","Dimethoate 30EC – 2 ml/L, mealybug"],
+    pests:[
+      { n:"White Stem Borer", d:"Most serious pest; girdles stem killing branches.", c:"Apply Chlorpyrifos @ collar region; prune infested branches." },
+      { n:"Coffee Berry Borer", d:"Tiny beetle bores into green berry; internal damage.", c:"Use Beauveria bassiana biopesticide + Endosulfan." },
+      { n:"Coffee Leaf Rust", d:"Orange powdery spots; defoliation in severe cases.", c:"Apply Copper oxychloride at onset of rains." },
+      { n:"Green Scale", d:"Infests branches; sooty mold reduces yield.", c:"Spray Imidacloprid or Buprofezin." }
+    ],
+    states:[
+      { n:"Karnataka",lat:15.3173,lng:75.7139,share:71 },
+      { n:"Kerala",lat:10.8505,lng:76.2711,share:22 },
+      { n:"Tamil Nadu",lat:11.1271,lng:78.6569,share:6 },
+      { n:"Andhra Pradesh",lat:15.9129,lng:79.7400,share:0.7 },
+      { n:"Odisha",lat:20.9517,lng:85.0985,share:0.2 },
+      { n:"Others",lat:15.0,lng:75.0,share:0.1 }
+    ],
+    nutrition:[
+      { n:"Caffeine",   v:"95 mg/cup",pct:95, b:"Mental alertness, physical performance" },
+      { n:"Chlorogenic Acid",v:"High",pct:80, b:"Blood sugar regulation, anti-obesity" },
+      { n:"Riboflavin", v:"0.18 mg",  pct:14, b:"Energy metabolism (B2 vitamin)" },
+      { n:"Niacin",     v:"2.5 mg",  pct:16, b:"Cholesterol management" },
+      { n:"Potassium",  v:"116 mg",  pct:2,  b:"Electrolyte replenishment" },
+      { n:"Antioxidants",v:"High",   pct:85, b:"Largest antioxidant source in diet" },
+      { n:"Magnesium",  v:"7 mg",    pct:2,  b:"Nerve function" },
+      { n:"Vitamin B5", v:"0.6 mg",  pct:12, b:"Adrenal health, stress resistance" }
+    ]
+  }
+};
+
+// =====================================================
+//  HELPERS
+// =====================================================
+function getCropKey() {
+  // Extract from URL e.g. /recommender/prediction_analysis/rice/
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'rice';
+}
+
+const PIE_COLORS = ['#2e7d32','#5cb85c','#e8b84b','#c0392b','#2980b9','#8e44ad','#e67e22','#1abc9c'];
+
+function animateCount(el, val, suffix='') {
+  let start = 0, end = parseFloat(val) || 0;
+  const dur = 1800, step = 20;
+  const inc = end / (dur / step);
+  const t = setInterval(() => {
+    start = Math.min(start + inc, end);
+    el.textContent = (start === end ? end : start.toFixed(1)) + suffix;
+    if (start >= end) clearInterval(t);
+  }, step);
+}
+
+// =====================================================
+//  MAIN INIT
+// =====================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const key = getCropKey();
+  const crop = CROPS[key] || CROPS['rice'];
+
+  // Hide loader
+  setTimeout(() => document.getElementById('loader').classList.add('hidden'), 900);
+
+  // Hero
+  document.getElementById('heroBg').style.backgroundImage = `url('${crop.image}')`;
+  document.getElementById('cropBadge').textContent = crop.category + ' Crop';
+  document.getElementById('heroTitle').textContent = crop.name;
+  document.getElementById('heroSub').textContent = crop.tip;
+  const statsDiv = document.getElementById('heroStats');
+  crop.stats.forEach(s => {
+    statsDiv.innerHTML += `<div class="hstat"><div class="hstat-value">${s.v}</div><div class="hstat-label">${s.l}</div></div>`;
+  });
+
+  // Production gauges
+  const pg = document.getElementById('prodGauges');
+  pg.innerHTML = `
+    <div class="col-md-4"><div class="prod-gauge"><div class="gauge-val pop-in">${crop.production.total}</div><p style="opacity:.7;font-size:.8rem;text-transform:uppercase;letter-spacing:2px;margin-top:6px">Total Production</p></div></div>
+    <div class="col-md-4"><div class="prod-gauge" style="background:linear-gradient(135deg,#b7860c,#e8b84b)"><div class="gauge-val pop-in">#${crop.production.rank}</div><p style="opacity:.8;font-size:.8rem;text-transform:uppercase;letter-spacing:2px;margin-top:6px;color:#fff">National Rank</p></div></div>
+    <div class="col-md-4"><div class="prod-gauge" style="background:linear-gradient(135deg,#1a3a6a,#2980b9)"><div class="gauge-val pop-in">${crop.harvest.days} d</div><p style="opacity:.7;font-size:.8rem;text-transform:uppercase;letter-spacing:2px;margin-top:6px">Crop Duration</p></div></div>
+  `;
+
+  // Production bar
+  new Chart(document.getElementById('productionBarChart'), {
+    type: 'bar',
+    data: {
+      labels: crop.states.map(s => s.n),
+      datasets: [{ label: 'Production Share (%)', data: crop.states.map(s => s.share),
+        backgroundColor: PIE_COLORS, borderRadius: 10, borderSkipped: false }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, max: 100 }, x: { ticks: { maxRotation: 30 } } },
+      animation: { duration: 2000, easing: 'easeOutQuart' }
+    }
+  });
+
+  // Growth line chart
+  document.getElementById('growthAlert').innerHTML = `<strong>🌱 Growth Insight:</strong> Peak growth occurs in <strong>${crop.growth.labels[crop.growth.data.indexOf(Math.max(...crop.growth.data))]}</strong>. Average yield: <strong>${crop.stats[0].v}</strong>.`;
+  new Chart(document.getElementById('growthLineChart'), {
+    type: 'line',
+    data: {
+      labels: crop.growth.labels,
+      datasets: [{
+        label: 'Growth Intensity (%)',
+        data: crop.growth.data,
+        borderColor: '#5cb85c', backgroundColor: 'rgba(92,184,92,.15)',
+        fill: true, tension: 0.45, pointBackgroundColor: '#2e7d32',
+        pointRadius: 5, pointHoverRadius: 8
+      }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } },
+      animation: { duration: 2200, easing: 'easeOutBounce' },
+      plugins: { tooltip: { callbacks: { label: c => `Intensity: ${c.raw}%` } } }
+    }
+  });
+
+  // Monsoon
+  document.getElementById('monsoonGood').textContent = crop.monsoon.good;
+  document.getElementById('monsoonBad').textContent = crop.monsoon.bad;
+  document.getElementById('cycloneAlert').innerHTML = `<i class="fa-solid fa-hurricane fa-2x" style="color:#b7860c;min-width:32px"></i><div><strong>🌀 Cyclone Risk:</strong> ${crop.monsoon.cyclone}</div>`;
+
+  // Monsoon horizontal bar chart
+  const monsoonMonths = ["Jun","Jul","Aug","Sep","Oct","Nov"];
+  const rainfall = [120,200,180,150,80,40];
+  const cropReq  = [90,130,120,100,60,30];
+  new Chart(document.getElementById('monsoonChart'), {
+    type: 'bar',
+    data: {
+      labels: monsoonMonths,
+      datasets: [
+        { label: 'Avg Rainfall (mm)', data: rainfall, backgroundColor: 'rgba(41,128,185,.7)', borderRadius: 6 },
+        { label: `${crop.name} Requirement (mm)`, data: cropReq, backgroundColor: 'rgba(92,184,92,.85)', borderRadius: 6 }
+      ]
+    },
+    options: { indexAxis: 'y', responsive: true, animation: { duration: 1800 },
+      plugins: { legend: { position: 'top' } }
+    }
+  });
+
+  // Harvest
+  document.getElementById('harvestDays').textContent = crop.harvest.days;
+  document.getElementById('harvestSeason').textContent = '📅 ' + crop.harvest.season;
+  const ht = document.getElementById('harvestTips');
+  ht.innerHTML = crop.harvest.tips.map((t,i) =>
+    `<div class="pesto-item"><i class="fa-solid fa-circle-check"></i><span>${t}</span></div>`
+  ).join('');
+
+  // Harvest quality chart (dummy months)
+  new Chart(document.getElementById('harvestChart'), {
+    type: 'radar',
+    data: {
+      labels: ['Moisture Level','Grain Quality','Market Price','Disease Risk','Weather Risk'],
+      datasets: [
+        { label: 'Early Harvest', data: [70,55,40,30,20], borderColor:'#e8b84b', backgroundColor:'rgba(232,184,75,.2)' },
+        { label: 'Optimal Harvest', data: [40,90,85,15,10], borderColor:'#5cb85c', backgroundColor:'rgba(92,184,92,.2)' },
+        { label: 'Late Harvest', data: [20,65,50,40,35], borderColor:'#c0392b', backgroundColor:'rgba(192,57,43,.2)' }
+      ]
+    },
+    options: { responsive: true, scales: { r: { beginAtZero: true, max: 100 } },
+      animation: { duration: 2000 }
+    }
+  });
+
+  // Evolution
+  const evo = document.getElementById('evoTimeline');
+  evo.innerHTML = crop.evolution.map((e,i) => `
+    <div class="evo-step" id="evo${i}">
+      <div class="evo-dot">${i+1}</div>
+      <div class="evo-line">
+        <div class="evo-year">${e.yr}</div>
+        <div class="evo-text">${e.txt}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Animate evo steps
+  setTimeout(() => {
+    crop.evolution.forEach((_,i) => {
+      setTimeout(() => document.getElementById('evo'+i)?.classList.add('visible'), i * 220);
+    });
+  }, 400);
+
+  // Pesticides
+  document.getElementById('pesticideList').innerHTML = crop.pesticides.map(p =>
+    `<div class="pesto-item"><i class="fa-solid fa-spray-can-sparkles"></i><span>${p}</span></div>`
+  ).join('');
+
+  // Pests grid
+  document.getElementById('pestGrid').innerHTML = crop.pests.map(p => `
+    <div class="col-md-6">
+      <div class="pest-card">
+        <div class="pest-name"><i class="fa-solid fa-bug me-2"></i>${p.n}</div>
+        <div class="pest-desc">${p.d}</div>
+        <div class="pest-ctrl"><strong>✅ Control:</strong> ${p.c}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // India Map
+  const mapEl = document.getElementById('indiaMap');
+  mapEl.style.height = '540px';
+  const map = L.map('indiaMap', { zoomControl: true }).setView([20.5937, 78.9629], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+  const redIcon = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [28,46], iconAnchor: [14,46], popupAnchor: [0,-35]
+  });
+  crop.states.forEach(s => {
+    const circle = L.circle([s.lat, s.lng], {
+      color: '#c0392b', fillColor: '#e74c3c', fillOpacity: 0.35,
+      radius: s.share * 18000
+    }).addTo(map);
+    circle.bindPopup(`<b>${s.n}</b><br>🌾 ${crop.name} Production: <b>${s.share}%</b>`);
+    L.marker([s.lat, s.lng], { icon: redIcon }).addTo(map)
+      .bindPopup(`<b>${s.n}</b><br>Share: <b>${s.share}%</b>`);
+  });
+
+  // Pie Chart
+  new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: crop.states.map(s => s.n),
+      datasets: [{ data: crop.states.map(s => s.share), backgroundColor: PIE_COLORS, hoverOffset: 14 }]
+    },
+    options: { responsive: true, cutout: '50%',
+      animation: { duration: 2200, animateRotate: true, animateScale: true },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+    }
+  });
+
+  // Horizontal Bar
+  new Chart(document.getElementById('horizBar'), {
+    type: 'bar',
+    data: {
+      labels: crop.states.map(s => s.n),
+      datasets: [{ label: 'Production (%)', data: crop.states.map(s => s.share),
+        backgroundColor: PIE_COLORS.map(c => c + 'cc'), borderColor: PIE_COLORS, borderWidth: 1.5, borderRadius: 8 }]
+    },
+    options: { indexAxis: 'y', responsive: true,
+      scales: { x: { beginAtZero: true, max: 100 } },
+      animation: { duration: 2000, easing: 'easeOutQuart' },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Nutrition pie
+  new Chart(document.getElementById('nutriPie'), {
+    type: 'pie',
+    data: {
+      labels: crop.nutrition.map(n => n.n),
+      datasets: [{ data: crop.nutrition.map(n => n.pct), backgroundColor: PIE_COLORS, hoverOffset: 10 }]
+    },
+    options: { responsive: true,
+      animation: { duration: 2200, animateRotate: true, animateScale: true },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+    }
+  });
+
+  // Nutrition horizontal bar
+  new Chart(document.getElementById('nutriBar'), {
+    type: 'bar',
+    data: {
+      labels: crop.nutrition.map(n => n.n),
+      datasets: [{ label: '% Daily Value', data: crop.nutrition.map(n => n.pct),
+        backgroundColor: crop.nutrition.map((_,i) => PIE_COLORS[i % PIE_COLORS.length] + 'bb'),
+        borderRadius: 8, borderSkipped: false }]
+    },
+    options: { indexAxis: 'y', responsive: true,
+      scales: { x: { beginAtZero: true } },
+      animation: { duration: 2000 },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Nutrition table
+  const tb = document.getElementById('nutriTable');
+  tb.innerHTML = crop.nutrition.map((n,i) => `
+    <tr class="nutri-row" style="background:${i%2===0?'#f8fbf8':'#fff'}">
+      <td style="padding:12px 16px;font-weight:600">${n.n}</td>
+      <td style="padding:12px">${n.v}</td>
+      <td style="padding:12px"><span class="chip chip-gold">${n.pct}%</span></td>
+      <td style="padding:12px;min-width:120px">
+        <div style="background:#e0e0e0;border-radius:4px;height:8px;overflow:hidden">
+          <div class="nutri-bar-fill" data-pct="${Math.min(n.pct,100)}"></div>
+        </div>
+      </td>
+      <td style="padding:12px;color:#666;font-size:.84rem">${n.b}</td>
+    </tr>
+  `).join('');
+
+  // Animate nutrition bars
+  setTimeout(() => {
+    document.querySelectorAll('.nutri-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.pct + '%';
+    });
+  }, 1000);
+
+  // Scroll reveal
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.sr').forEach(el => observer.observe(el));
+
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.nav-link-item');
+  const navObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`.nav-link-item[href="#${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { threshold: 0.5 });
+  sections.forEach(s => navObs.observe(s));
+});
+</script>
+{% endblock %}

@@ -1,0 +1,561 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Prediction History{% endblock %}
+
+{% block extra_css %}
+<style>
+
+/* =========================================================
+   PAGE
+========================================================= */
+.history-page {
+  padding: 2.5rem 0 4rem;
+  animation: pageIn .5s ease both;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+.h-page-header {
+  margin-bottom: 2rem;
+}
+.h-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--green-base);
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  padding: .28rem .8rem;
+  margin-bottom: .65rem;
+}
+.h-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .02em;
+  line-height: 1.15;
+  margin-bottom: .3rem;
+}
+.h-title em {
+  font-style: italic;
+  color: var(--green-base);
+  font-weight: 400;
+}
+.h-subtitle {
+  font-size: .85rem;
+  color: var(--text-soft);
+}
+
+/* =========================================================
+   STATS ROW
+========================================================= */
+.stats-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.8rem;
+}
+.stat-chip {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 10px;
+  padding: .6rem 1rem;
+  box-shadow: 0 2px 10px rgba(27,67,50,.07);
+  animation: chipIn .45s ease both;
+  transition: transform .22s, box-shadow .22s;
+}
+.stat-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(27,67,50,.13);
+}
+.stat-chip:nth-child(1) { animation-delay: .08s; }
+.stat-chip:nth-child(2) { animation-delay: .14s; }
+.stat-chip:nth-child(3) { animation-delay: .20s; }
+@keyframes chipIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.chip-icon {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--green-mist);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--green-dark);
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+.chip-label {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  line-height: 1.1;
+}
+.chip-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1.1;
+}
+
+/* =========================================================
+   TOOLBAR
+========================================================= */
+.h-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+.search-wrap {
+  position: relative;
+}
+.search-icon {
+  position: absolute;
+  left: .75rem; top: 50%;
+  transform: translateY(-50%);
+  color: var(--green-base);
+  font-size: .78rem;
+  pointer-events: none;
+}
+.history-search {
+  border: 1.5px solid var(--green-pale);
+  border-radius: 8px;
+  padding: .5rem .9rem .5rem 2.1rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .85rem;
+  color: var(--text-dark);
+  background: var(--white);
+  width: 230px;
+  transition: border-color .22s, box-shadow .22s, width .3s;
+}
+.history-search:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3px rgba(64,145,108,.15);
+  outline: none;
+  width: 270px;
+}
+.result-count {
+  font-size: .78rem;
+  color: var(--text-soft);
+  font-weight: 500;
+  letter-spacing: .04em;
+}
+.result-count span {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
+/* =========================================================
+   TABLE CARD
+========================================================= */
+.history-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 28px rgba(27,67,50,.09);
+  animation: cardRise .55s .05s ease both;
+}
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Table */
+.htable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .83rem;
+}
+
+/* Header */
+.htable thead tr {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+}
+.htable thead th {
+  color: var(--white);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 1rem 1rem;
+  border: none;
+  white-space: nowrap;
+  position: relative;
+}
+.htable thead th:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 25%; bottom: 25%;
+  width: 1px;
+  background: rgba(255,255,255,.15);
+}
+
+/* Body rows */
+.htable tbody tr {
+  border-bottom: 1px solid var(--green-mist);
+  transition: background .18s, transform .18s;
+  animation: rowIn .4s ease both;
+}
+.htable tbody tr:last-child { border-bottom: none; }
+.htable tbody tr:hover {
+  background: #f0faf4;
+  transform: scale(1.002);
+}
+
+/* Staggered row animation */
+.htable tbody tr:nth-child(1)  { animation-delay: .06s; }
+.htable tbody tr:nth-child(2)  { animation-delay: .10s; }
+.htable tbody tr:nth-child(3)  { animation-delay: .14s; }
+.htable tbody tr:nth-child(4)  { animation-delay: .18s; }
+.htable tbody tr:nth-child(5)  { animation-delay: .22s; }
+.htable tbody tr:nth-child(6)  { animation-delay: .26s; }
+.htable tbody tr:nth-child(7)  { animation-delay: .30s; }
+.htable tbody tr:nth-child(8)  { animation-delay: .34s; }
+.htable tbody tr:nth-child(9)  { animation-delay: .38s; }
+.htable tbody tr:nth-child(10) { animation-delay: .42s; }
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.htable tbody td {
+  padding: .8rem 1rem;
+  color: var(--text-mid);
+  vertical-align: middle;
+}
+
+/* Date cell */
+.date-cell {
+  font-size: .75rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+.date-cell .date-day {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  display: block;
+  line-height: 1.1;
+}
+
+/* Crop pill */
+.crop-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  color: var(--green-dark);
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .28rem .8rem;
+  white-space: nowrap;
+  transition: background .2s, transform .2s;
+}
+.crop-pill:hover {
+  background: var(--green-pale);
+  transform: scale(1.05);
+}
+.crop-pill i { font-size: .6rem; }
+
+/* Number badge */
+.num-badge {
+  display: inline-block;
+  background: var(--off-white);
+  border: 1px solid var(--green-pale);
+  color: var(--green-dark);
+  font-weight: 600;
+  border-radius: 6px;
+  padding: .18rem .5rem;
+  font-size: .78rem;
+  transition: background .18s;
+}
+.htable tbody tr:hover .num-badge {
+  background: var(--green-mist);
+}
+
+/* Delete button */
+.btn-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  background: transparent;
+  border: 1.5px solid #fca5a5;
+  border-radius: 7px;
+  color: #dc2626;
+  font-size: .75rem;
+  text-decoration: none;
+  transition: all .2s;
+  cursor: pointer;
+}
+.btn-del:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+  transform: scale(1.15) rotate(5deg);
+  color: #dc2626;
+}
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+.empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+.empty-icon {
+  font-size: 3.5rem;
+  display: block;
+  margin-bottom: .8rem;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+.empty-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  margin-bottom: .4rem;
+}
+.empty-sub {
+  font-size: .83rem;
+  color: var(--text-soft);
+}
+
+/* =========================================================
+   NO MATCH ROW
+========================================================= */
+.no-match {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-soft);
+  font-size: .85rem;
+  display: none;
+}
+
+/* =========================================================
+   FOOTER LINE
+========================================================= */
+.table-footer {
+  background: var(--off-white);
+  border-top: 1px solid var(--green-mist);
+  padding: .65rem 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: .73rem;
+  color: var(--text-soft);
+  letter-spacing: .04em;
+}
+.table-footer i { color: var(--green-base); margin-right: .3rem; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-page">
+<div class="container">
+
+  <!-- PAGE HEADER -->
+  <div class="h-page-header">
+    <div class="h-eyebrow">
+      <i class="fa-solid fa-clock-rotate-left"></i> Records
+    </div>
+    <h1 class="h-title">Prediction <em>History</em></h1>
+    <hr>
+    <br></br>
+    
+  </div>
+
+  <!-- STATS CHIPS -->
+  <div class="stats-row">
+    <div class="stat-chip">
+      <div class="chip-icon"><i class="fa-solid fa-list-check"></i></div>
+      <div>
+        <div class="chip-label">Total Predictions</div>
+        <div class="chip-value">{{ predictions|length }}</div>
+      </div>
+    </div>
+    <div class="stat-chip">
+      <div class="chip-icon"><i class="fa-solid fa-seedling"></i></div>
+      <div>
+        <div class="chip-label">Latest Crop</div>
+        <div class="chip-value">
+          {% if predictions %}
+            {{ predictions.0.predicted_label|title }}
+          {% else %}
+            —
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="stat-chip">
+      <div class="chip-icon"><i class="fa-solid fa-calendar-check"></i></div>
+      <div>
+        <div class="chip-label">Last Predicted</div>
+        <div class="chip-value">
+          {% if predictions %}
+            {{ predictions.0.created_at|date:"d M Y" }}
+          {% else %}
+            —
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="h-toolbar">
+    <div class="search-wrap">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text"
+             id="historySearch"
+             class="history-search"
+             placeholder="Search crop, date, value…">
+    </div>
+    <div class="result-count">
+      Showing <span id="visibleCount">{{ predictions|length }}</span> records
+    </div>
+  </div>
+
+  <!-- TABLE CARD -->
+  <div class="history-card">
+    <div class="table-responsive">
+      <table class="htable" id="historyTable">
+
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Crop</th>
+            <th>N</th>
+            <th>P</th>
+            <th>K</th>
+            <th>Temp</th>
+            <th>Humidity</th>
+            <th>pH</th>
+            <th>Rainfall</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody id="historyBody">
+          {% for p in predictions %}
+          <tr>
+            <td>
+              <div class="date-cell">
+                <span class="date-day">{{ p.created_at|date:"d M Y" }}</span>
+                {{ p.created_at|date:"H:i" }}
+              </div>
+            </td>
+            <td>
+              <span class="crop-pill">
+                <i class="fa-solid fa-seedling"></i>
+                {{ p.predicted_label|title }}
+              </span>
+            </td>
+            <td><span class="num-badge">{{ p.N }}</span></td>
+            <td><span class="num-badge">{{ p.P }}</span></td>
+            <td><span class="num-badge">{{ p.K }}</span></td>
+            <td><span class="num-badge">{{ p.temperature }}°</span></td>
+            <td><span class="num-badge">{{ p.humidity }}%</span></td>
+            <td><span class="num-badge">{{ p.ph }}</span></td>
+            <td><span class="num-badge">{{ p.rainfall }}</span></td>
+            <td>
+              <a href="{% url 'recommender:user_delete_prediction' p.id %}"
+                 class="btn-del"
+                 title="Delete"
+                 onclick="return confirm('Delete this prediction?')">
+                <i class="fa-solid fa-trash"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10">
+              <div class="empty-state">
+                <span class="empty-icon">🌾</span>
+                <div class="empty-title">No predictions yet</div>
+                <p class="empty-sub">Head to the Predict page and make your first crop recommendation!</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+
+      <!-- No-match message (shown by JS) -->
+      <div class="no-match" id="noMatch">
+        <i class="fa-solid fa-magnifying-glass" style="font-size:1.4rem;color:var(--green-pale);display:block;margin-bottom:.5rem"></i>
+        No records match your search.
+      </div>
+    </div>
+
+    <!-- Table footer -->
+    <div class="table-footer">
+      <span><i class="fa-solid fa-shield-halved"></i> Your data is private and secure</span>
+      <span><i class="fa-solid fa-circle" style="color:var(--green-light);font-size:.5rem;margin-right:.4rem"></i>Auto-saved after every prediction</span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+(function () {
+  const searchInput  = document.getElementById('historySearch');
+  const tbody        = document.getElementById('historyBody');
+  const noMatch      = document.getElementById('noMatch');
+  const visibleCount = document.getElementById('visibleCount');
+
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', function () {
+    const q     = this.value.trim().toLowerCase();
+    const rows  = tbody ? tbody.querySelectorAll('tr') : [];
+    let visible = 0;
+
+    rows.forEach(row => {
+      const match = row.innerText.toLowerCase().includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+
+    if (visibleCount) visibleCount.textContent = visible;
+    if (noMatch) noMatch.style.display = (visible === 0 && q.length > 0) ? 'block' : 'none';
+  });
+})();
+</script>
+{% endblock %}

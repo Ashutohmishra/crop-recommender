@@ -1,0 +1,780 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}User Management — Crop Recommender{% endblock %}
+
+{% block extra_css %}
+<style>
+
+/* =========================================================
+   PAGE
+========================================================= */
+.uv-page {
+  padding: 2.5rem 0 4rem;
+  animation: pageIn .5s ease both;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+.uv-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  animation: fadeDown .55s ease both;
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.uv-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--green-base);
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  padding: .28rem .85rem;
+  margin-bottom: .7rem;
+}
+.uv-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .02em;
+  line-height: 1.15;
+  margin-bottom: .3rem;
+}
+.uv-title em { font-style: italic; color: var(--green-base); font-weight: 400; }
+.uv-subtitle { font-size: .84rem; color: var(--text-soft); }
+
+/* =========================================================
+   STAT CHIPS
+========================================================= */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+@media (max-width: 576px) { .stat-row { grid-template-columns: 1fr; } }
+
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  padding: 1.4rem 1.2rem;
+  text-align: center;
+  box-shadow: 0 3px 18px rgba(27,67,50,.08);
+  transition: transform .28s, box-shadow .28s;
+  animation: cardRise .5s ease both;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--green-dark), var(--green-light));
+  border-radius: 14px 14px 0 0;
+}
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 36px rgba(27,67,50,.15);
+}
+.stat-card:nth-child(1) { animation-delay: .08s; }
+.stat-card:nth-child(2) { animation-delay: .14s; }
+.stat-card:nth-child(3) { animation-delay: .20s; }
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stat-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: var(--green-mist);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto .8rem;
+  color: var(--green-dark);
+  font-size: 1.1rem;
+  transition: transform .25s;
+}
+.stat-card:hover .stat-icon { transform: scale(1.1) rotate(-5deg); }
+.stat-label {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-bottom: .3rem;
+}
+.stat-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1;
+  animation: countUp .8s ease both;
+}
+@keyframes countUp {
+  from { opacity: 0; transform: scale(.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* =========================================================
+   MESSAGE CARDS
+========================================================= */
+.msg-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  margin-bottom: 2rem;
+}
+@media (max-width: 767px) { .msg-row { grid-template-columns: 1fr; } }
+
+.msg-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  box-shadow: 0 3px 18px rgba(27,67,50,.08);
+  overflow: hidden;
+  transition: transform .28s, box-shadow .28s;
+  animation: cardRise .5s .25s ease both;
+}
+.msg-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px rgba(27,67,50,.14);
+}
+
+.msg-card-header {
+  padding: 1rem 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.msg-card-header.govt {
+  background: linear-gradient(135deg, #b8860b, #d4a017);
+}
+.msg-card-header.agri {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+}
+.msg-card-header h5 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--white);
+  letter-spacing: .03em;
+  margin: 0;
+}
+.msg-card-header i { color: rgba(255,255,255,.85); font-size: .88rem; }
+
+.msg-card-body { padding: 1.3rem; }
+
+/* Textarea */
+.msg-textarea {
+  width: 100%;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 8px;
+  padding: .65rem .9rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .86rem;
+  color: var(--text-dark);
+  background: var(--white);
+  resize: vertical;
+  min-height: 110px;
+  transition: border-color .22s, box-shadow .22s, background .22s;
+  margin-bottom: .85rem;
+}
+.msg-textarea:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3.5px rgba(64,145,108,.13);
+  outline: none;
+  background: #fafffd;
+}
+.msg-textarea::placeholder { color: rgba(90,127,106,.4); }
+
+/* File input label */
+.file-label {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: .38rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.file-label i { color: var(--green-base); font-size: .65rem; }
+
+.file-input-wrap {
+  border: 1.5px dashed var(--green-pale);
+  border-radius: 8px;
+  padding: .7rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  cursor: pointer;
+  transition: border-color .22s, background .22s;
+  margin-bottom: .9rem;
+  background: var(--off-white);
+}
+.file-input-wrap:hover {
+  border-color: var(--green-base);
+  background: var(--green-mist);
+}
+.file-input-wrap i { color: var(--green-base); font-size: .9rem; }
+.file-input-wrap span {
+  font-size: .8rem;
+  color: var(--text-soft);
+}
+.file-input-wrap input { display: none; }
+
+/* Send buttons */
+.btn-send {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  padding: .7rem 1.2rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s, box-shadow .22s;
+}
+.btn-send::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-send:hover { transform: translateY(-2px); }
+
+.btn-send.govt-btn {
+  background: linear-gradient(135deg, #b8860b, #d4a017);
+  color: var(--white);
+  box-shadow: 0 4px 16px rgba(184,134,11,.3);
+}
+.btn-send.govt-btn:hover { box-shadow: 0 8px 24px rgba(184,134,11,.45); }
+
+.btn-send.agri-btn {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  color: var(--white);
+  box-shadow: 0 4px 16px rgba(27,67,50,.28);
+}
+.btn-send.agri-btn:hover { box-shadow: 0 8px 24px rgba(27,67,50,.4); }
+
+/* =========================================================
+   ALERTS
+========================================================= */
+.alert {
+  border-radius: 10px;
+  font-size: .85rem;
+  border: none;
+  padding: .85rem 1.1rem;
+  margin-bottom: .6rem;
+  animation: cardRise .4s ease both;
+}
+.alert-success { background: var(--green-mist); color: var(--green-dark); border-left: 4px solid var(--green-base); }
+.alert-danger   { background: #ffebee; color: #c62828; border-left: 4px solid #e53935; }
+.alert-warning  { background: #fff8e1; color: #e65100; border-left: 4px solid #fb8c00; }
+.alert-info     { background: #e3f2fd; color: #0d47a1; border-left: 4px solid #1976d2; }
+
+/* =========================================================
+   USER TABLE SECTION
+========================================================= */
+.table-section {
+  animation: cardRise .5s .35s ease both;
+}
+
+.table-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 28px rgba(27,67,50,.09);
+}
+
+.table-card-header {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.table-card-header h5 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--white);
+  letter-spacing: .04em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* Search */
+.tbl-search-wrap { position: relative; }
+.tbl-search-icon {
+  position: absolute;
+  left: .7rem; top: 50%;
+  transform: translateY(-50%);
+  color: var(--green-base);
+  font-size: .75rem;
+  pointer-events: none;
+}
+.tbl-search {
+  border: 1.5px solid var(--green-pale);
+  border-radius: 8px;
+  padding: .45rem .8rem .45rem 2rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  background: var(--white);
+  color: var(--text-dark);
+  width: 200px;
+  transition: border-color .22s, box-shadow .22s, width .3s;
+}
+.tbl-search:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3px rgba(64,145,108,.15);
+  outline: none;
+  width: 240px;
+}
+
+/* Table */
+.utable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .83rem;
+}
+.utable thead th {
+  background: var(--off-white);
+  color: var(--text-mid);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .85rem 1rem;
+  border-bottom: 2px solid var(--green-pale);
+  border-top: none;
+  white-space: nowrap;
+}
+.utable tbody tr {
+  border-bottom: 1px solid var(--green-mist);
+  transition: background .18s;
+  animation: rowIn .38s ease both;
+}
+.utable tbody tr:last-child { border-bottom: none; }
+.utable tbody tr:hover { background: #f0faf4; }
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.utable tbody tr:nth-child(1) { animation-delay: .05s; }
+.utable tbody tr:nth-child(2) { animation-delay: .09s; }
+.utable tbody tr:nth-child(3) { animation-delay: .13s; }
+.utable tbody tr:nth-child(4) { animation-delay: .17s; }
+.utable tbody tr:nth-child(5) { animation-delay: .21s; }
+.utable tbody tr:nth-child(6) { animation-delay: .25s; }
+.utable tbody tr:nth-child(7) { animation-delay: .29s; }
+.utable tbody tr:nth-child(8) { animation-delay: .33s; }
+
+.utable tbody td {
+  padding: .8rem 1rem;
+  color: var(--text-mid);
+  vertical-align: middle;
+}
+
+/* Serial number */
+.td-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--green-base);
+}
+
+/* Username */
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.user-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  display: flex; align-items: center; justify-content: center;
+  color: var(--white);
+  font-size: .72rem;
+  font-weight: 700;
+  font-family: 'Cormorant Garamond', serif;
+  flex-shrink: 0;
+  letter-spacing: .02em;
+}
+.user-name { font-weight: 600; color: var(--text-dark); font-size: .84rem; }
+
+/* Role badges */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  border-radius: 20px;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .22rem .7rem;
+}
+.role-badge.admin { background: var(--green-mist); color: var(--green-dark); border: 1px solid var(--green-pale); }
+.role-badge.user  { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
+
+/* Date */
+.date-cell { font-size: .78rem; color: var(--text-soft); }
+.date-cell strong { display: block; font-size: .85rem; color: var(--text-mid); font-weight: 600; }
+
+/* Delete button */
+.btn-del {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: transparent;
+  border: 1.5px solid #fca5a5;
+  color: #dc2626;
+  border-radius: 7px;
+  padding: .3rem .65rem;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-del:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+  transform: scale(1.06);
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-soft);
+}
+.empty-state .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: .6rem;
+  opacity: .35;
+  animation: gentlePulse 2.5s ease-in-out infinite;
+}
+@keyframes gentlePulse {
+  0%,100% { transform: scale(1); opacity: .35; }
+  50%      { transform: scale(1.07); opacity: .5; }
+}
+
+/* Table footer */
+.table-footer {
+  background: var(--off-white);
+  border-top: 1px solid var(--green-mist);
+  padding: .6rem 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: .72rem;
+  color: var(--text-soft);
+  letter-spacing: .04em;
+}
+
+/* =========================================================
+   BACK BUTTON
+========================================================= */
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--white);
+  border: 1.5px solid var(--green-pale);
+  color: var(--text-mid);
+  border-radius: 8px;
+  padding: .6rem 1.5rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: all .22s;
+  margin-top: 1.8rem;
+}
+.btn-back:hover {
+  background: var(--green-mist);
+  border-color: var(--green-base);
+  color: var(--green-dark);
+  transform: translateX(-3px);
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="uv-page">
+<div class="container">
+
+  <!-- PAGE HEADER -->
+  <div class="uv-header">
+    <div class="uv-eyebrow">
+      <i class="fa-solid fa-users"></i> Administration
+    </div>
+    <h1 class="uv-title">User <em>Management</em></h1>
+    <p class="uv-subtitle">Monitor registered users, send messages and manage access.</p>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+      <div class="stat-label">Total Users</div>
+      <div class="stat-value">{{ total_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="stat-label">Admin Users</div>
+      <div class="stat-value">{{ admin_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="fa-solid fa-user"></i></div>
+      <div class="stat-label">Normal Users</div>
+      <div class="stat-value">{{ normal_users }}</div>
+    </div>
+  </div>
+
+  <!-- MESSAGE CARDS -->
+  <div class="msg-row">
+
+    <!-- Government -->
+    <div class="msg-card">
+      <div class="msg-card-header govt">
+        <i class="fa-solid fa-landmark"></i>
+        <h5>Message to Government</h5>
+      </div>
+      <div class="msg-card-body">
+        <form method="post" action="{% url 'recommender:send_message_govt' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <textarea name="govt_message"
+                    class="msg-textarea"
+                    placeholder="Describe your issue or request to the higher authority…"
+                    required></textarea>
+
+          <div class="file-label">
+            <i class="fa-solid fa-image"></i> Attach Photo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-soft)">(optional)</span>
+          </div>
+          <label class="file-input-wrap" for="govt_photo_input">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span id="govt_file_name">Click to choose field/crop photo</span>
+            <input type="file" id="govt_photo_input" name="govt_photo"
+                   accept="image/*"
+                   onchange="document.getElementById('govt_file_name').textContent = this.files[0]?.name || 'Click to choose field/crop photo'">
+          </label>
+
+          <button type="submit" class="btn-send govt-btn">
+            <i class="fa-solid fa-paper-plane me-2"></i>Send to Government
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Agriculture Officer -->
+    <div class="msg-card">
+      <div class="msg-card-header agri">
+        <i class="fa-solid fa-tractor"></i>
+        <h5>Message to Agriculture Officer</h5>
+      </div>
+      <div class="msg-card-body">
+        <form method="post" action="{% url 'recommender:send_message_agri' %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <textarea name="agri_message"
+                    class="msg-textarea"
+                    placeholder="Ask about the best crop for your field, soil issues, pest advice…"
+                    required></textarea>
+
+          <div class="file-label">
+            <i class="fa-solid fa-image"></i> Attach Photo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-soft)">(recommended)</span>
+          </div>
+          <label class="file-input-wrap" for="agri_photo_input">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span id="agri_file_name">Click to choose field/crop photo</span>
+            <input type="file" id="agri_photo_input" name="agri_photo"
+                   accept="image/*"
+                   onchange="document.getElementById('agri_file_name').textContent = this.files[0]?.name || 'Click to choose field/crop photo'">
+          </label>
+
+          <button type="submit" class="btn-send agri-btn">
+            <i class="fa-solid fa-paper-plane me-2"></i>Send to Agriculture Officer
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div><!-- /msg-row -->
+
+  <!-- ALERTS -->
+  {% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- USER TABLE -->
+  <div class="table-section">
+
+    <div style="margin-bottom:.8rem;">
+      <div class="uv-eyebrow" style="margin-bottom:0">
+        <i class="fa-solid fa-table-list"></i> All Registered Users
+      </div>
+    </div>
+
+    <div class="table-card">
+
+      <div class="table-card-header">
+        <h5><i class="fa-solid fa-users"></i> Users</h5>
+        <div class="tbl-search-wrap">
+          <i class="fa-solid fa-magnifying-glass tbl-search-icon"></i>
+          <input type="text" id="userSearch" class="tbl-search" placeholder="Search users…">
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="utable" id="userTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>User</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="userTbody">
+            {% for u in users %}
+            <tr>
+              <td class="td-num">{{ forloop.counter }}</td>
+              <td>
+                <div class="user-cell">
+                  <div class="user-avatar">
+                    {{ u.username|first|upper }}
+                  </div>
+                  <span class="user-name">{{ u.username }}</span>
+                </div>
+              </td>
+              <td style="font-size:.81rem;color:var(--text-soft)">{{ u.email }}</td>
+              <td>
+                {% if u.is_staff %}
+                  <span class="role-badge admin">
+                    <i class="fa-solid fa-shield-halved" style="font-size:.6rem"></i> Admin
+                  </span>
+                {% else %}
+                  <span class="role-badge user">
+                    <i class="fa-solid fa-user" style="font-size:.6rem"></i> User
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="date-cell">
+                  <strong>{{ u.date_joined|date:"d M Y" }}</strong>
+                  {{ u.date_joined|date:"H:i" }}
+                </div>
+              </td>
+              <td>
+                {% if request.user.is_staff and u != request.user %}
+                <form method="post"
+                      action="{% url 'recommender:delete_user' u.id %}"
+                      style="display:inline"
+                      onsubmit="return confirm('Delete {{ u.username }}? This cannot be undone.')">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-del">
+                    <i class="fa-solid fa-trash"></i> Delete
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <div class="empty-icon">👤</div>
+                  <p style="font-size:.85rem">No users found.</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span><i class="fa-solid fa-circle" style="color:var(--green-light);font-size:.45rem;margin-right:.4rem"></i>Live data</span>
+        <span id="visibleCount">{{ users|length }} users shown</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BACK BUTTON -->
+  <div class="text-center">
+    <a href="{% url 'recommender:admin_dashboard' %}" class="btn-back">
+      <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+    </a>
+  </div>
+
+</div>
+</div>
+
+<script>
+// Live search
+(function () {
+  const input   = document.getElementById('userSearch');
+  const tbody   = document.getElementById('userTbody');
+  const counter = document.getElementById('visibleCount');
+  if (!input) return;
+
+  input.addEventListener('input', function () {
+    const q    = this.value.trim().toLowerCase();
+    const rows = tbody.querySelectorAll('tr');
+    let visible = 0;
+    rows.forEach(row => {
+      const match = row.innerText.toLowerCase().includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    if (counter) counter.textContent = visible + ' user' + (visible !== 1 ? 's' : '') + ' shown';
+  });
+})();
+</script>
+
+{% endblock %}

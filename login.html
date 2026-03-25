@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Login — Crop Recommender{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+
+/* =========================================================
+   LOGIN PAGE WRAPPER
+========================================================= */
+.login-page {
+  min-height: 78vh;
+  display: flex;
+  align-items: center;
+  padding: 2rem 0 3rem;
+  animation: pageIn .5s ease both;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   MAIN CARD
+========================================================= */
+.login-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  box-shadow: 0 8px 48px rgba(27,67,50,.14);
+  overflow: hidden;
+  display: flex;
+  min-height: 520px;
+  animation: cardRise .6s .08s ease both;
+}
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(24px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* =========================================================
+   LEFT PANEL — IMAGE SIDE
+========================================================= */
+.login-left {
+  flex: 0 0 46%;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(27,67,50,.35) 0%, rgba(27,67,50,.55) 60%, rgba(27,67,50,.82) 100%),
+    url("{% static 'images/carousel4.png' %}") center/cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 2.5rem;
+  overflow: hidden;
+}
+
+/* Animated leaf circle decoration */
+.login-left::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  background: rgba(116,198,157,.12);
+  animation: breathe 5s ease-in-out infinite;
+}
+.login-left::after {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(116,198,157,.1);
+  animation: breathe 5s 1s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100% { transform: scale(1);    opacity: .7; }
+  50%      { transform: scale(1.12); opacity: 1;  }
+}
+
+/* Shimmer rule */
+.left-shimmer {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent, var(--green-light), #fff, var(--green-light), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3.5s ease-in-out infinite;
+  opacity: .55;
+}
+@keyframes shimmer {
+  0%,100% { background-position: 0%   50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+.left-brand {
+  position: absolute;
+  top: 2rem; left: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgba(255,255,255,.9);
+  letter-spacing: .05em;
+  animation: fadeDown .55s .25s ease both;
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.left-brand i {
+  color: var(--green-light);
+  animation: sway 3.8s ease-in-out infinite;
+  display: inline-block;
+  transform-origin: bottom center;
+}
+@keyframes sway {
+  0%,100% { transform: rotate(-7deg); }
+  50%      { transform: rotate( 7deg); }
+}
+
+.left-content {
+  position: relative;
+  z-index: 2;
+  animation: fadeUp .6s .3s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.left-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .03em;
+  line-height: 1.2;
+  margin-bottom: .5rem;
+}
+.left-heading em {
+  font-style: italic;
+  color: var(--green-light);
+}
+
+.left-sub {
+  font-size: .82rem;
+  color: rgba(255,255,255,.65);
+  line-height: 1.55;
+  margin-bottom: 1.4rem;
+  letter-spacing: .02em;
+}
+
+.feature-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+.feature-list li {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: .8rem;
+  color: rgba(255,255,255,.85);
+  animation: featureIn .4s ease both;
+}
+.feature-list li:nth-child(1) { animation-delay: .4s; }
+.feature-list li:nth-child(2) { animation-delay: .5s; }
+.feature-list li:nth-child(3) { animation-delay: .6s; }
+.feature-list li:nth-child(4) { animation-delay: .7s; }
+@keyframes featureIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.feature-list li i {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: rgba(116,198,157,.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem;
+  color: var(--green-light);
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   RIGHT PANEL — FORM SIDE
+========================================================= */
+.login-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem 2.8rem;
+  animation: fadeRight .6s .1s ease both;
+}
+@keyframes fadeRight {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Form header */
+.form-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--green-base);
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  padding: .25rem .75rem;
+  margin-bottom: .75rem;
+}
+.form-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .02em;
+  margin-bottom: .25rem;
+  line-height: 1.15;
+}
+.form-title em {
+  font-style: italic;
+  color: var(--green-base);
+  font-weight: 400;
+}
+.form-desc {
+  font-size: .82rem;
+  color: var(--text-soft);
+  margin-bottom: 1.8rem;
+  letter-spacing: .02em;
+}
+
+/* Divider line */
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  margin-bottom: 1.5rem;
+}
+.form-divider::before,
+.form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--green-pale);
+}
+.form-divider span {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+/* Field groups */
+.field-wrap {
+  margin-bottom: 1.2rem;
+  animation: fieldIn .4s ease both;
+}
+.field-wrap:nth-child(1) { animation-delay: .2s; }
+.field-wrap:nth-child(2) { animation-delay: .28s; }
+@keyframes fieldIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.field-label {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: .4rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.field-label i {
+  color: var(--green-base);
+  font-size: .68rem;
+}
+
+.field-input-wrap {
+  position: relative;
+}
+.field-prefix {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 42px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--green-base);
+  font-size: .8rem;
+  border-right: 1.5px solid var(--green-pale);
+  transition: color .22s, border-color .22s;
+  pointer-events: none;
+}
+.f-input {
+  width: 100%;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 9px;
+  padding: .65rem .9rem .65rem 48px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .9rem;
+  color: var(--text-dark);
+  background: var(--white);
+  transition: border-color .22s, box-shadow .22s, background .22s;
+}
+.f-input:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3.5px rgba(64,145,108,.14);
+  outline: none;
+  background: #fafffd;
+}
+.f-input:focus ~ .field-prefix,
+.field-input-wrap:focus-within .field-prefix {
+  color: var(--green-dark);
+  border-color: var(--green-base);
+}
+.f-input::placeholder { color: rgba(90,127,106,.4); font-size: .84rem; }
+
+/* Password toggle */
+.pwd-toggle {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  border-left: 1.5px solid var(--green-pale);
+  color: var(--text-soft);
+  font-size: .8rem;
+  cursor: pointer;
+  border-radius: 0 9px 9px 0;
+  transition: color .2s, background .2s;
+}
+.pwd-toggle:hover { color: var(--green-dark); background: var(--green-mist); }
+.f-input.has-toggle { padding-right: 48px; }
+
+/* Animated focus bar */
+.focus-bar {
+  height: 2px;
+  background: linear-gradient(90deg, var(--green-base), var(--green-light));
+  border-radius: 0 0 4px 4px;
+  transform: scaleX(0);
+  transition: transform .3s ease;
+  transform-origin: left;
+  margin-top: -2px;
+}
+.field-input-wrap:focus-within .focus-bar { transform: scaleX(1); }
+
+/* =========================================================
+   SUBMIT BUTTON
+========================================================= */
+.btn-login {
+  width: 100%;
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-base) 100%);
+  border: none;
+  border-radius: 9px;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .88rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .75rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(27,67,50,.28);
+  transition: transform .22s, box-shadow .22s;
+  margin-top: .5rem;
+  animation: fieldIn .4s .36s ease both;
+}
+.btn-login::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-login:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(27,67,50,.38);
+}
+.btn-login:active { transform: translateY(0); }
+
+/* Spinner inside button */
+.btn-login .btn-text  { transition: opacity .2s; }
+.btn-login .btn-spin  { display: none; }
+.btn-login.loading .btn-text { opacity: 0; }
+.btn-login.loading .btn-spin { display: inline-block; }
+
+/* =========================================================
+   SIGNUP LINK
+========================================================= */
+.signup-link {
+  text-align: center;
+  margin-top: 1.4rem;
+  font-size: .8rem;
+  color: var(--text-soft);
+  animation: fieldIn .4s .44s ease both;
+}
+.signup-link a {
+  color: var(--green-dark);
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px dashed var(--green-pale);
+  transition: border-color .2s, color .2s;
+}
+.signup-link a:hover {
+  color: var(--green-base);
+  border-color: var(--green-base);
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+@media (max-width: 767px) {
+  .login-left { display: none; }
+  .login-right { padding: 2.2rem 1.8rem; }
+  .login-card { border-radius: 14px; }
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+<div class="container">
+<div class="row justify-content-center">
+<div class="col-lg-9 col-xl-8">
+
+  <div class="login-card">
+
+    <!-- ======= LEFT PANEL ======= -->
+    <div class="login-left">
+      <div class="left-shimmer"></div>
+
+      <!-- Brand top-left -->
+      <div class="left-brand">
+        <i class="fa-solid fa-wheat-awn"></i>
+        Crop Recommender
+      </div>
+
+      <!-- Bottom content -->
+      <div class="left-content">
+        <h2 class="left-heading">
+          Welcome<br><em>back, Farmer</em>
+        </h2>
+        <p class="left-sub">
+          Sign in to access your personalised crop dashboard, prediction history, and smart field insights.
+        </p>
+        <ul class="feature-list">
+          <li><i class="fa-solid fa-check"></i> Secure &amp; Private Account</li>
+          <li><i class="fa-solid fa-check"></i> Fast ML-Powered Predictions</li>
+          <li><i class="fa-solid fa-check"></i> Full Prediction History</li>
+          <li><i class="fa-solid fa-check"></i> Pesticide &amp; Risk Recommendations</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ======= RIGHT PANEL ======= -->
+    <div class="login-right">
+
+      <div class="form-eyebrow">
+        <i class="fa-solid fa-lock"></i> Secure Sign In
+      </div>
+      <h1 class="form-title">Sign In to Your<br><em>Account</em></h1>
+      <p class="form-desc">Enter your credentials to continue to your dashboard.</p>
+
+      <div class="form-divider"><span>Your Details</span></div>
+
+      <form method="POST" action="{% url 'recommender:login' %}" id="loginForm">
+        {% csrf_token %}
+
+        <!-- Email -->
+        <div class="field-wrap">
+          <label class="field-label" for="loginEmail">
+            <i class="fa-solid fa-envelope"></i> Email Address
+          </label>
+          <div class="field-input-wrap">
+            <span class="field-prefix"><i class="fa-solid fa-envelope"></i></span>
+            <input type="email"
+                   id="loginEmail"
+                   name="email"
+                   class="f-input"
+                   placeholder="you@example.com"
+                   autocomplete="email"
+                   required>
+            <div class="focus-bar"></div>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="field-wrap">
+          <label class="field-label" for="loginPwd">
+            <i class="fa-solid fa-key"></i> Password
+          </label>
+          <div class="field-input-wrap">
+            <span class="field-prefix"><i class="fa-solid fa-key"></i></span>
+            <input type="password"
+                   id="loginPwd"
+                   name="password"
+                   class="f-input has-toggle"
+                   placeholder="••••••••"
+                   autocomplete="current-password"
+                   required>
+            <button type="button" class="pwd-toggle" id="toggleLoginPwd" title="Show / Hide password">
+              <i class="fa-regular fa-eye" id="toggleIcon"></i>
+            </button>
+            <div class="focus-bar"></div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-login" id="loginBtn">
+          <span class="btn-text">
+            <i class="fa-solid fa-right-to-bracket me-2"></i>Sign In
+          </span>
+          <span class="btn-spin">
+            <i class="fa-solid fa-spinner fa-spin"></i> Signing in…
+          </span>
+        </button>
+
+      </form>
+
+      <!-- Signup link -->
+      <div class="signup-link">
+        New here?&nbsp;
+        <a href="{% url 'recommender:signup' %}">
+          <i class="fa-solid fa-user-plus me-1"></i>Create an account
+        </a>
+      </div>
+
+    </div><!-- /login-right -->
+  </div><!-- /login-card -->
+
+</div>
+</div>
+</div>
+</div>
+
+<script>
+// Password toggle
+document.getElementById('toggleLoginPwd').addEventListener('click', function () {
+  const pwd  = document.getElementById('loginPwd');
+  const icon = document.getElementById('toggleIcon');
+  const show = pwd.type === 'password';
+  pwd.type = show ? 'text' : 'password';
+  icon.classList.toggle('fa-eye',      !show);
+  icon.classList.toggle('fa-eye-slash', show);
+});
+
+// Button loading state on submit
+document.getElementById('loginForm').addEventListener('submit', function () {
+  document.getElementById('loginBtn').classList.add('loading');
+});
+</script>
+
+{% endblock %}

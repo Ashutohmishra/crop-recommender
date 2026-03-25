@@ -1,0 +1,1158 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Predict Crop{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<style>
+
+/* =========================================================
+   PAGE LAYOUT
+========================================================= */
+.predict-page {
+  min-height: 80vh;
+  padding: 2.5rem 0 3rem;
+}
+
+/* Decorative vertical rule on the left of the page */
+.predict-page::before {
+  content: '';
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    var(--green-base) 20%,
+    var(--green-light) 50%,
+    var(--green-base) 80%,
+    transparent 100%
+  );
+  opacity: .35;
+  animation: rulePulse 4s ease-in-out infinite alternate;
+}
+@keyframes rulePulse {
+  from { opacity: .2; }
+  to   { opacity: .5; }
+}
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+.page-header {
+  margin-bottom: 2rem;
+  animation: fadeDown .55s ease both;
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-header-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--green-base);
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  padding: .3rem .9rem;
+  margin-bottom: .75rem;
+}
+.page-header h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .02em;
+  line-height: 1.15;
+  margin-bottom: .35rem;
+}
+.page-header p {
+  font-size: .9rem;
+  color: var(--text-soft);
+  max-width: 520px;
+}
+
+/* =========================================================
+   MAIN FORM CARD
+========================================================= */
+.form-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(27,67,50,.1);
+  overflow: hidden;
+  animation: cardRise .6s .1s ease both;
+}
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.form-card-header {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+  padding: 1.4rem 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.form-card-header h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--white);
+  letter-spacing: .04em;
+  margin: 0;
+}
+.form-card-header h2 i {
+  color: var(--green-light);
+  margin-right: .45rem;
+}
+.range-hint {
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .05em;
+  color: rgba(183,228,199,.8);
+  text-align: right;
+  line-height: 1.5;
+}
+
+.form-card-body {
+  padding: 1.8rem;
+}
+
+/* =========================================================
+   INPUT FIELDS
+========================================================= */
+.field-group {
+  position: relative;
+  animation: fieldIn .45s ease both;
+}
+.field-group:nth-child(1) { animation-delay: .08s; }
+.field-group:nth-child(2) { animation-delay: .12s; }
+.field-group:nth-child(3) { animation-delay: .16s; }
+.field-group:nth-child(4) { animation-delay: .20s; }
+.field-group:nth-child(5) { animation-delay: .24s; }
+.field-group:nth-child(6) { animation-delay: .28s; }
+.field-group:nth-child(7) { animation-delay: .32s; }
+@keyframes fieldIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: .4rem;
+}
+.field-label .field-icon {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  background: var(--green-mist);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .65rem;
+  color: var(--green-base);
+}
+
+.field-input {
+  width: 100%;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 8px;
+  padding: .6rem .95rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .9rem;
+  color: var(--text-dark);
+  background: var(--white);
+  transition: border-color .22s, box-shadow .22s, background .22s;
+  -moz-appearance: textfield;
+}
+.field-input::-webkit-inner-spin-button,
+.field-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.field-input:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3.5px rgba(64,145,108,.15);
+  outline: none;
+  background: #fafffd;
+}
+.field-input::placeholder { color: rgba(90,127,106,.45); font-size: .85rem; }
+
+/* Animated focus bar */
+.field-bar {
+  position: absolute;
+  bottom: 0; left: 8px; right: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--green-base), var(--green-light));
+  border-radius: 1px;
+  transform: scaleX(0);
+  transition: transform .3s ease;
+  transform-origin: left;
+}
+.field-input:focus ~ .field-bar { transform: scaleX(1); }
+
+/* =========================================================
+   DIVIDER
+========================================================= */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  margin: 1.5rem 0;
+  color: var(--text-soft);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green-pale));
+}
+.section-divider::after { background: linear-gradient(90deg, var(--green-pale), transparent); }
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn-predict {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-base) 100%);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  padding: .7rem 2rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s, box-shadow .22s;
+  box-shadow: 0 4px 16px rgba(27,67,50,.28);
+}
+.btn-predict::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-predict::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0; height: 0;
+  background: rgba(255,255,255,.25);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width .5s ease, height .5s ease, opacity .5s ease;
+  opacity: 0;
+}
+.btn-predict:active::after {
+  width: 240px; height: 240px;
+  opacity: 0;
+}
+.btn-predict:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(27,67,50,.38);
+  color: var(--white);
+}
+
+.btn-sample {
+  background: var(--white);
+  border: 1.5px solid var(--green-base);
+  color: var(--green-dark);
+  border-radius: 8px;
+  padding: .7rem 1.5rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  transition: all .22s;
+}
+.btn-sample:hover {
+  background: var(--green-mist);
+  border-color: var(--green-dark);
+  color: var(--green-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(64,145,108,.2);
+}
+
+.btn-reset {
+  background: transparent;
+  border: 1.5px solid #e0e0e0;
+  color: #888;
+  border-radius: 8px;
+  padding: .7rem 1.2rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  transition: all .22s;
+}
+.btn-reset:hover {
+  border-color: #bbb;
+  color: #555;
+  background: #f8f8f8;
+}
+
+/* =========================================================
+   RESULT PANEL
+========================================================= */
+.result-panel {
+  margin-top: 1.8rem;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: resultSlide .55s cubic-bezier(.22,1,.36,1) both;
+  border: 1.5px solid var(--green-pale);
+  box-shadow: 0 6px 28px rgba(27,67,50,.12);
+}
+@keyframes resultSlide {
+  from { opacity: 0; transform: translateY(20px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.result-header {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  padding: 1.1rem 1.5rem;
+  text-align: center;
+}
+.result-header-label {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--green-light);
+  margin-bottom: .25rem;
+}
+.result-header h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--white);
+  letter-spacing: .05em;
+  margin: 0;
+}
+
+.result-body {
+  background: linear-gradient(180deg, #f0faf3 0%, var(--white) 100%);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.crop-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .03em;
+  line-height: 1.1;
+  position: relative;
+  display: inline-block;
+}
+.crop-name::after {
+  content: '';
+  display: block;
+  width: 60%; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--green-base), var(--green-light), transparent);
+  border-radius: 2px;
+  margin: .4rem auto 0;
+  animation: lineGrow .6s .3s ease both;
+  transform-origin: center;
+}
+@keyframes lineGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.result-crop-icon {
+  font-size: 2.5rem;
+  margin-bottom: .5rem;
+  animation: iconBounce .6s .1s cubic-bezier(.175,.885,.32,1.275) both;
+  display: block;
+}
+@keyframes iconBounce {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.result-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  font-size: .72rem;
+  color: var(--text-soft);
+  letter-spacing: .06em;
+  margin-top: .6rem;
+  margin-bottom: 1.2rem;
+}
+.result-meta i { color: var(--green-base); }
+
+.result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  justify-content: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--green-mist);
+}
+.result-tag {
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  color: var(--text-mid);
+  border-radius: 6px;
+  font-size: .72rem;
+  font-weight: 600;
+  padding: .28rem .7rem;
+  letter-spacing: .04em;
+  transition: background .2s;
+}
+.result-tag:hover { background: var(--green-pale); }
+.result-tag span { color: var(--green-base); }
+
+/* =========================================================
+   RIGHT SIDEBAR
+========================================================= */
+.sidebar-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  position: sticky;
+  top: 90px;
+  animation: sideIn .65s .2s ease both;
+}
+@keyframes sideIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* TIPS CARD */
+.tips-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 3px 18px rgba(27,67,50,.09);
+  transition: transform .28s, box-shadow .28s;
+}
+.tips-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(27,67,50,.14);
+}
+
+.tips-card-header {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  padding: .9rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.tips-card-header h5 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+  letter-spacing: .04em;
+}
+.tips-card-header i { color: var(--green-light); font-size: .9rem; }
+
+.tips-card-body {
+  padding: 1.1rem 1.2rem;
+  max-height: 370px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--green-pale) transparent;
+}
+.tips-card-body::-webkit-scrollbar { width: 4px; }
+.tips-card-body::-webkit-scrollbar-thumb { background: var(--green-pale); border-radius: 2px; }
+
+.tips-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.tips-list li {
+  font-size: .82rem;
+  color: var(--text-mid);
+  line-height: 1.55;
+  padding: .5rem 0;
+  border-bottom: 1px solid var(--green-mist);
+  display: flex;
+  gap: .5rem;
+}
+.tips-list li:last-child { border-bottom: none; padding-bottom: 0; }
+.tips-list li::before {
+  content: '▸';
+  color: var(--green-base);
+  font-size: .7rem;
+  margin-top: .2rem;
+  flex-shrink: 0;
+}
+
+.no-result-tip {
+  text-align: center;
+  padding: 1.5rem .5rem;
+}
+.no-result-tip .tip-placeholder-icon {
+  font-size: 2.2rem;
+  margin-bottom: .6rem;
+  opacity: .35;
+  animation: gentlePulse 2.5s ease-in-out infinite;
+}
+@keyframes gentlePulse {
+  0%,100% { transform: scale(1);    opacity: .35; }
+  50%      { transform: scale(1.08); opacity: .5;  }
+}
+.no-result-tip p {
+  font-size: .8rem;
+  color: var(--text-soft);
+  letter-spacing: .03em;
+}
+
+/* NPK CARD */
+.npk-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(27,67,50,.07);
+  padding: 1.1rem 1.2rem;
+}
+.npk-card h6 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--green-dark);
+  margin-bottom: .8rem;
+  letter-spacing: .03em;
+}
+.npk-row {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  margin-bottom: .55rem;
+}
+.npk-row:last-child { margin-bottom: 0; }
+.npk-badge {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  font-size: .8rem;
+  font-family: 'Cormorant Garamond', serif;
+  flex-shrink: 0;
+}
+.npk-badge.n { background: #e8f5e9; color: #2e7d32; }
+.npk-badge.p { background: #fff3e0; color: #e65100; }
+.npk-badge.k { background: #e3f2fd; color: #1565c0; }
+.npk-text {
+  font-size: .8rem;
+  color: var(--text-mid);
+  line-height: 1.3;
+}
+.npk-text strong { color: var(--text-dark); }
+
+/* CYCLONE CARD */
+.cyclone-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(27,67,50,.07);
+  transition: transform .28s, box-shadow .28s;
+}
+.cyclone-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(27,67,50,.12);
+}
+.cyclone-card-header {
+  padding: .85rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+.cyclone-card-header.danger  { background: linear-gradient(135deg, #c62828, #e53935); }
+.cyclone-card-header.warning { background: linear-gradient(135deg, #e65100, #f57c00); }
+.cyclone-card-header.safe    { background: linear-gradient(135deg, var(--green-dark), var(--green-mid)); }
+.cyclone-card-header.neutral { background: linear-gradient(135deg, #455a64, #607d8b); }
+.cyclone-card-header h5 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+  letter-spacing: .03em;
+}
+
+.cyclone-card-body { padding: 1rem 1.2rem; }
+
+.cyclone-alert-box {
+  border-left: 3px solid #ef5350;
+  background: #fff5f5;
+  padding: .8rem 1rem;
+  border-radius: 0 7px 7px 0;
+  margin-bottom: .7rem;
+}
+.cyclone-warning-box {
+  border-left: 3px solid #fb8c00;
+  background: #fff8f0;
+  padding: .8rem 1rem;
+  border-radius: 0 7px 7px 0;
+  margin-bottom: .7rem;
+}
+.cyclone-safe-box {
+  border-left: 3px solid var(--green-base);
+  background: var(--green-mist);
+  padding: .8rem 1rem;
+  border-radius: 0 7px 7px 0;
+  margin-bottom: .7rem;
+}
+
+.cyclone-list {
+  list-style: none;
+  padding: 0;
+  margin: .6rem 0 .5rem;
+}
+.cyclone-list li {
+  font-size: .79rem;
+  color: var(--text-mid);
+  padding: .25rem 0;
+  display: flex;
+  gap: .4rem;
+  align-items: flex-start;
+}
+.cyclone-list li::before {
+  content: '•';
+  color: var(--green-base);
+  font-size: .9rem;
+  flex-shrink: 0;
+  margin-top: -.05rem;
+}
+.cyclone-advice {
+  font-size: .79rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  background: var(--green-mist);
+  border-radius: 6px;
+  padding: .5rem .8rem;
+  margin-top: .5rem;
+}
+.cyclone-advice i { color: var(--green-base); margin-right: .3rem; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="predict-page">
+<div class="container">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="page-header-label">
+      <i class="fa-solid fa-seedling"></i>
+      AI-Powered Analysis
+    </div>
+    <h1>Crop Recommendation<br><em style="font-style:italic;color:var(--green-base);font-weight:400;">Engine</em></h1>
+    <p>Enter your soil and climate data below to receive a precise crop recommendation tailored to your field conditions.</p>
+  </div>
+
+  <div class="row g-4 align-items-start">
+
+    <!-- ======== LEFT: FORM ======== -->
+    <div class="col-lg-7">
+
+      <div class="form-card">
+
+        <!-- Card Header -->
+        <div class="form-card-header">
+          <h2><i class="fa-solid fa-flask-vial"></i> Soil & Climate Parameters</h2>
+          <div class="range-hint">
+            Humidity: 0–100 &nbsp;|&nbsp; pH: 0–14<br>
+            Rainfall: 120–300 mm
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div class="form-card-body">
+          <form method="post" id="predictForm">
+            {% csrf_token %}
+
+            <div class="row g-3">
+              {% for c in feature_order %}
+              <div class="col-md-4">
+                <div class="field-group">
+
+                  <label class="field-label" for="field_{{ c }}">
+                    <span class="field-icon">
+                      {% if c == "N" %}<i class="fa-solid fa-leaf"></i>
+                      {% elif c == "P" %}<i class="fa-solid fa-fire"></i>
+                      {% elif c == "K" %}<i class="fa-solid fa-droplet"></i>
+                      {% elif c == "temperature" %}<i class="fa-solid fa-temperature-half"></i>
+                      {% elif c == "humidity" %}<i class="fa-solid fa-cloud"></i>
+                      {% elif c == "ph" %}<i class="fa-solid fa-flask"></i>
+                      {% elif c == "rainfall" %}<i class="fa-solid fa-cloud-rain"></i>
+                      {% else %}<i class="fa-solid fa-circle-dot"></i>
+                      {% endif %}
+                    </span>
+                    {{ c }}
+                  </label>
+
+                  {% if c == "humidity" %}
+                    <input type="number" id="field_{{ c }}" min="0" max="100" step="any"
+                           name="{{ c }}" required class="field-input" placeholder="0 – 100" />
+                  {% elif c == "ph" %}
+                    <input type="number" id="field_{{ c }}" min="0" max="14" step="any"
+                           name="{{ c }}" required class="field-input" placeholder="0 – 14" />
+                  {% elif c == "rainfall" %}
+                    <input type="number" id="field_{{ c }}" min="120" max="300" step="any"
+                           name="{{ c }}" required class="field-input" placeholder="120 – 300" />
+                  {% elif c == "N" %}
+                    <input type="number" id="field_{{ c }}" min="30" max="150" step="any"
+                           name="{{ c }}" required class="field-input" placeholder="30 – 150" />
+                  {% else %}
+                    <input type="number" id="field_{{ c }}" min="0" max="100" step="any"
+                           name="{{ c }}" required class="field-input" placeholder="e.g. 90" />
+                  {% endif %}
+
+                  <div class="field-bar"></div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="section-divider">Actions</div>
+
+            <div class="d-flex flex-wrap gap-2">
+              <button type="submit" class="btn-predict">
+                <i class="fa-solid fa-wand-magic-sparkles me-2"></i>Predict Crop
+              </button>
+              <button type="button" id="btnSample" class="btn-sample">
+                <i class="fa-solid fa-bolt me-2"></i>Sample Data
+              </button>
+              <button type="reset" class="btn-reset">
+                <i class="fa-solid fa-rotate-left me-1"></i>Reset
+              </button>
+            </div>
+
+          </form>
+
+          <!-- RESULT -->
+          {% if result %}
+          <div class="result-panel">
+            <div class="result-header">
+              <div class="result-header-label">
+                <i class="fa-solid fa-circle-check"></i> &nbsp;Prediction Complete
+              </div>
+              <h3>Best Crop for Your Field</h3>
+            </div>
+            <div class="result-body">
+              <span class="result-crop-icon">🌱</span>
+              <div class="crop-name">{{ result|title }}</div>
+              <div class="result-meta">
+                <i class="fa-solid fa-clock"></i>
+                Prediction time: {{ prediction_time }} sec
+              </div>
+              <div class="result-tags">
+                {% for k,v in last_data.items %}
+                <span class="result-tag"><span>{{ k }}</span> = {{ v }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+        </div><!-- /form-card-body -->
+      </div><!-- /form-card -->
+    </div><!-- /col-lg-7 -->
+
+
+    <!-- ======== RIGHT: SIDEBAR ======== -->
+    <div class="col-lg-5">
+      <div class="sidebar-stack">
+
+        <!-- SMART CROP GUIDE -->
+        <div class="tips-card">
+          <div class="tips-card-header">
+            <i class="fa-solid fa-book-open-reader"></i>
+            <h5>Smart Crop Guide</h5>
+          </div>
+          <div class="tips-card-body">
+
+            {% if result == "rice" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Maintain 5–10 cm standing water; irrigate every 3–4 days if dry.</li>
+              <li><b>🌱 Soil:</b> Clayey or loamy, pH 5.5–6.5 for best retention.</li>
+              <li><b>🌡️ Temperature:</b> 20–35°C with high humidity ideal.</li>
+              <li><b>🧪 Fertilizer:</b> Urea (N), Phosphorus for roots, Potassium for strength.</li>
+              <li><b>🌿 Organic:</b> Compost, green manure, cow dung improve fertility.</li>
+              <li><b>🐛 Pests:</b> Stem borer, brown planthopper, leaf folder.</li>
+              <li><b>🧫 Diseases:</b> Rice blast and bacterial leaf blight.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil spray every 10–15 days.</li>
+              <li><b>📈 Monitor:</b> Check tillering ~25 days after planting.</li>
+              <li><b>🌾 Harvest:</b> 110–130 days; grains turn golden yellow.</li>
+              <li><b>🔁 Rotation:</b> Follow with lentils, chickpeas, or vegetables.</li>
+              <li><b>💰 Yield:</b> 3–6 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Level the field and ensure drainage to avoid stagnation.</li>
+            </ul>
+
+            {% elif result == "banana" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Irrigate every 2–3 days during hot seasons.</li>
+              <li><b>🌱 Soil:</b> Fertile loamy soil, pH 6.0–7.5.</li>
+              <li><b>🌡️ Temperature:</b> Tropical climate 26–30°C ideal.</li>
+              <li><b>🧪 Fertilizer:</b> Nitrogen (leaf growth) and Potassium (fruit).</li>
+              <li><b>🌿 Organic:</b> Farmyard manure, compost, vermicompost.</li>
+              <li><b>🐛 Pests:</b> Banana weevil and nematodes.</li>
+              <li><b>🧫 Diseases:</b> Panama disease, leaf spot.</li>
+              <li><b>🌿 Bio-control:</b> Neem cake and Trichoderma.</li>
+              <li><b>📈 Monitor:</b> Observe fruit bunch formation weekly.</li>
+              <li><b>🌾 Harvest:</b> 10–12 months after planting.</li>
+              <li><b>🔁 Rotation:</b> Vegetables or legumes after harvest.</li>
+              <li><b>💰 Yield:</b> 30–40 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Use support poles against heavy wind.</li>
+            </ul>
+
+            {% elif result == "maize" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Moderate irrigation every 5–7 days.</li>
+              <li><b>🌱 Soil:</b> Well-drained fertile loamy soil.</li>
+              <li><b>🌡️ Temperature:</b> 18–27°C for best growth.</li>
+              <li><b>🧪 Fertilizer:</b> Nitrogen for strong growth and grain formation.</li>
+              <li><b>🌿 Organic:</b> Compost and vermicompost.</li>
+              <li><b>🐛 Pests:</b> Fall armyworm and stem borer.</li>
+              <li><b>🧫 Diseases:</b> Leaf blight and rust.</li>
+              <li><b>🌿 Bio-control:</b> Neem seed extract.</li>
+              <li><b>📈 Monitor:</b> Check plant height and leaf color weekly.</li>
+              <li><b>🌾 Harvest:</b> 90–100 days after planting.</li>
+              <li><b>🔁 Rotation:</b> Soybean or legumes improve fertility.</li>
+              <li><b>💰 Yield:</b> 4–8 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Maintain spacing for sunlight and air circulation.</li>
+            </ul>
+
+            {% elif result == "chickpea" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Light irrigation every 10–12 days.</li>
+              <li><b>🌱 Soil:</b> Sandy loam with good drainage.</li>
+              <li><b>🌡️ Temperature:</b> 20–25°C ideal.</li>
+              <li><b>🧪 Fertilizer:</b> Phosphorus supports root growth.</li>
+              <li><b>🌿 Organic:</b> Farmyard manure.</li>
+              <li><b>🐛 Pests:</b> Pod borer insects.</li>
+              <li><b>🧫 Diseases:</b> Fusarium wilt and root rot.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil and Bacillus thuringiensis.</li>
+              <li><b>📈 Monitor:</b> Flowering and pod formation stages.</li>
+              <li><b>🌾 Harvest:</b> 100–120 days.</li>
+              <li><b>🔁 Rotation:</b> Wheat or rice can follow.</li>
+              <li><b>💰 Yield:</b> 1.5–2 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Avoid waterlogging at all times.</li>
+            </ul>
+
+            {% elif result == "mango" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Irrigate every 7–10 days in dry seasons.</li>
+              <li><b>🌱 Soil:</b> Deep well-drained loamy soil.</li>
+              <li><b>🌡️ Temperature:</b> 24–30°C ideal.</li>
+              <li><b>🧪 Fertilizer:</b> NPK balanced for fruit growth.</li>
+              <li><b>🌿 Organic:</b> Compost and cow manure.</li>
+              <li><b>🐛 Pests:</b> Mango hopper and fruit fly.</li>
+              <li><b>🧫 Diseases:</b> Powdery mildew and anthracnose.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil spray.</li>
+              <li><b>📈 Monitor:</b> Flowering and fruit formation.</li>
+              <li><b>🌾 Harvest:</b> 3–5 months after flowering.</li>
+              <li><b>🔁 Rotation:</b> Intercrop vegetables in early years.</li>
+              <li><b>💰 Yield:</b> 8–10 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Annual pruning improves fruit yield.</li>
+            </ul>
+
+            {% elif result == "coconut" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> 50–60 L per tree every 3 days.</li>
+              <li><b>🌱 Soil:</b> Sandy coastal soil with good drainage.</li>
+              <li><b>🌡️ Temperature:</b> 25–32°C tropical climate.</li>
+              <li><b>🧪 Fertilizer:</b> Potassium and magnesium for nut production.</li>
+              <li><b>🌿 Organic:</b> Compost and coconut husk mulch.</li>
+              <li><b>🐛 Pests:</b> Rhinoceros beetle and red palm weevil.</li>
+              <li><b>🧫 Diseases:</b> Bud rot disease.</li>
+              <li><b>🌿 Bio-control:</b> Neem cake application.</li>
+              <li><b>📈 Monitor:</b> Monitor leaf health monthly.</li>
+              <li><b>🌾 Harvest:</b> ~12 months for mature coconuts.</li>
+              <li><b>🔁 Rotation:</b> Pineapple or banana between rows.</li>
+              <li><b>💰 Yield:</b> 80–120 nuts/tree/year.</li>
+              <li><b>🧑‍🌾 Tip:</b> Mulching retains soil moisture.</li>
+            </ul>
+
+            {% elif result == "coffee" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Moderate irrigation every 7–10 days in dry season.</li>
+              <li><b>🌱 Soil:</b> Rich loamy soil, pH 5.0–6.5.</li>
+              <li><b>🌡️ Temperature:</b> Cool tropical 18–28°C.</li>
+              <li><b>🧪 Fertilizer:</b> Balanced NPK for leaf growth and berries.</li>
+              <li><b>🌿 Organic:</b> Compost, coffee pulp manure, vermicompost.</li>
+              <li><b>🐛 Pests:</b> Coffee berry borer and leaf miners.</li>
+              <li><b>🧫 Diseases:</b> Coffee leaf rust and root rot.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil and Trichoderma.</li>
+              <li><b>📈 Monitor:</b> Flowering stage and berry development.</li>
+              <li><b>🌾 Harvest:</b> 6–8 months after flowering.</li>
+              <li><b>🔁 Rotation:</b> Pepper or cardamom as intercrops.</li>
+              <li><b>💰 Yield:</b> 0.8–1.2 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Shade trees improve quality and protect from heat.</li>
+            </ul>
+
+            {% elif result == "papaya" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Irrigate every 3–4 days during hot seasons.</li>
+              <li><b>🌱 Soil:</b> Well-drained sandy loam with organic matter.</li>
+              <li><b>🌡️ Temperature:</b> 22–32°C for best growth.</li>
+              <li><b>🧪 Fertilizer:</b> Nitrogen and potassium for fruit development.</li>
+              <li><b>🌿 Organic:</b> Compost, cow dung, vermicompost.</li>
+              <li><b>🐛 Pests:</b> Aphids and fruit flies.</li>
+              <li><b>🧫 Diseases:</b> Papaya ring spot virus, powdery mildew.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil spray.</li>
+              <li><b>📈 Monitor:</b> Flowering and fruit development stages.</li>
+              <li><b>🌾 Harvest:</b> 9–11 months after planting.</li>
+              <li><b>🔁 Rotation:</b> Vegetables or legumes after papaya.</li>
+              <li><b>💰 Yield:</b> 40–60 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Ensure good drainage to prevent root diseases.</li>
+            </ul>
+
+            {% elif result == "jute" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Regular moisture and moderate irrigation.</li>
+              <li><b>🌱 Soil:</b> Fertile alluvial soil with good drainage.</li>
+              <li><b>🌡️ Temperature:</b> 24–35°C with high humidity.</li>
+              <li><b>🧪 Fertilizer:</b> Nitrogen fertilizers improve fiber growth.</li>
+              <li><b>🌿 Organic:</b> Compost and green manure.</li>
+              <li><b>🐛 Pests:</b> Jute hairy caterpillar.</li>
+              <li><b>🧫 Diseases:</b> Stem rot and leaf mosaic.</li>
+              <li><b>🌿 Bio-control:</b> Neem extract sprays.</li>
+              <li><b>📈 Monitor:</b> Stem height and leaf growth.</li>
+              <li><b>🌾 Harvest:</b> ~120 days after sowing.</li>
+              <li><b>🔁 Rotation:</b> Rice commonly follows jute.</li>
+              <li><b>💰 Yield:</b> 2–3 tons fiber/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Harvest before flowering for better fiber quality.</li>
+            </ul>
+
+            {% elif result == "cotton" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Moderate irrigation every 6–7 days.</li>
+              <li><b>🌱 Soil:</b> Black cotton soil with good moisture retention.</li>
+              <li><b>🌡️ Temperature:</b> 21–30°C.</li>
+              <li><b>🧪 Fertilizer:</b> Nitrogen, Phosphorus, and Potassium.</li>
+              <li><b>🌿 Organic:</b> Farmyard manure and compost.</li>
+              <li><b>🐛 Pests:</b> Bollworm and aphids.</li>
+              <li><b>🧫 Diseases:</b> Leaf curl virus.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil spray.</li>
+              <li><b>📈 Monitor:</b> Boll formation stage.</li>
+              <li><b>🌾 Harvest:</b> 160–180 days after planting.</li>
+              <li><b>🔁 Rotation:</b> Wheat or legumes improve soil fertility.</li>
+              <li><b>💰 Yield:</b> 1.5–2 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Maintain proper plant spacing for healthy growth.</li>
+            </ul>
+
+            {% elif result == "orange" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Irrigate every 7 days in dry seasons.</li>
+              <li><b>🌱 Soil:</b> Well-drained sandy loam soil.</li>
+              <li><b>🌡️ Temperature:</b> 15–30°C.</li>
+              <li><b>🧪 Fertilizer:</b> Nitrogen and Potassium for fruit growth.</li>
+              <li><b>🌿 Organic:</b> Compost and vermicompost.</li>
+              <li><b>🐛 Pests:</b> Citrus psylla and fruit fly.</li>
+              <li><b>🧫 Diseases:</b> Citrus canker.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil spray.</li>
+              <li><b>📈 Monitor:</b> Flowering and fruit development.</li>
+              <li><b>🌾 Harvest:</b> 7–8 months after flowering.</li>
+              <li><b>🔁 Rotation:</b> Vegetables between rows.</li>
+              <li><b>💰 Yield:</b> 10–15 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Regular pruning improves fruit quality.</li>
+            </ul>
+
+            {% elif result == "watermelon" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Irrigate every 4–5 days.</li>
+              <li><b>🌱 Soil:</b> Sandy loam with good drainage.</li>
+              <li><b>🌡️ Temperature:</b> 22–30°C.</li>
+              <li><b>🧪 Fertilizer:</b> Nitrogen and Potassium.</li>
+              <li><b>🌿 Organic:</b> Compost and farmyard manure.</li>
+              <li><b>🐛 Pests:</b> Aphids and fruit flies.</li>
+              <li><b>🧫 Diseases:</b> Powdery mildew.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil spray.</li>
+              <li><b>📈 Monitor:</b> Vine growth and fruit size.</li>
+              <li><b>🌾 Harvest:</b> 80–90 days.</li>
+              <li><b>🔁 Rotation:</b> Legumes improve soil fertility.</li>
+              <li><b>💰 Yield:</b> 25–30 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Full sunlight produces sweeter fruits.</li>
+            </ul>
+
+            {% elif result == "grapes" %}
+            <ul class="tips-list">
+              <li><b>💧 Water:</b> Irrigate every 6–7 days by soil moisture.</li>
+              <li><b>🌱 Soil:</b> Well-drained sandy soil.</li>
+              <li><b>🌡️ Temperature:</b> 15–35°C.</li>
+              <li><b>🧪 Fertilizer:</b> Potassium improves fruit quality.</li>
+              <li><b>🌿 Organic:</b> Compost and vermicompost.</li>
+              <li><b>🐛 Pests:</b> Mealybugs.</li>
+              <li><b>🧫 Diseases:</b> Downy mildew.</li>
+              <li><b>🌿 Bio-control:</b> Neem oil spray.</li>
+              <li><b>📈 Monitor:</b> Fruit cluster growth.</li>
+              <li><b>🌾 Harvest:</b> 5–6 months after flowering.</li>
+              <li><b>🔁 Rotation:</b> Vegetables between vines.</li>
+              <li><b>💰 Yield:</b> 20–25 tons/hectare.</li>
+              <li><b>🧑‍🌾 Tip:</b> Use a trellis system to support vines.</li>
+            </ul>
+
+            {% else %}
+            <div class="no-result-tip">
+              <div class="tip-placeholder-icon">🌾</div>
+              <p>Submit your soil &amp; climate data to receive a personalised crop guide with water, fertilizer, pest and harvest details.</p>
+            </div>
+            {% endif %}
+
+          </div>
+        </div><!-- /tips-card -->
+
+        <!-- NPK CARD -->
+        <div class="npk-card">
+          <h6><i class="fa-solid fa-circle-question me-2" style="color:var(--green-base)"></i>What is N – P – K?</h6>
+          <div class="npk-row">
+            <span class="npk-badge n">N</span>
+            <div class="npk-text"><strong>Nitrogen</strong> — Drives leaf &amp; shoot growth</div>
+          </div>
+          <div class="npk-row">
+            <span class="npk-badge p">P</span>
+            <div class="npk-text"><strong>Phosphorus</strong> — Strengthens roots &amp; flowering</div>
+          </div>
+          <div class="npk-row">
+            <span class="npk-badge k">K</span>
+            <div class="npk-text"><strong>Potassium</strong> — Boosts disease resistance</div>
+          </div>
+        </div>
+
+        <!-- CYCLONE RISK CARD -->
+        <div class="cyclone-card">
+
+          {% if result == "rice" or result == "banana" or result == "coconut" or result == "papaya" %}
+          <div class="cyclone-card-header danger">
+            <i class="fa-solid fa-triangle-exclamation" style="color:#ffcdd2;font-size:.9rem"></i>
+            <h5>Cyclone Risk — Red Alert</h5>
+          </div>
+          <div class="cyclone-card-body">
+            <div class="cyclone-alert-box">
+              <b style="color:#c62828">⚠ High Vulnerability</b>
+              <ul class="cyclone-list">
+                <li>Plants may fall or break in strong winds.</li>
+                <li>Flooding can severely damage root systems.</li>
+                <li>Fruit crops may drop prematurely.</li>
+                <li>Waterlogging significantly reduces yield.</li>
+              </ul>
+            </div>
+            <div class="cyclone-advice">
+              <i class="fa-solid fa-shield-halved"></i>
+              Use wind barriers, strong plant supports and ensure proper drainage channels.
+            </div>
+          </div>
+
+          {% elif result == "maize" or result == "jute" or result == "cotton" %}
+          <div class="cyclone-card-header warning">
+            <i class="fa-solid fa-triangle-exclamation" style="color:#ffe0b2;font-size:.9rem"></i>
+            <h5>Cyclone Risk — Moderate</h5>
+          </div>
+          <div class="cyclone-card-body">
+            <div class="cyclone-warning-box">
+              <b style="color:#e65100">⚠ Moderate Vulnerability</b>
+              <ul class="cyclone-list">
+                <li>Strong winds may bend or break stems.</li>
+                <li>Heavy rain can damage crop growth.</li>
+                <li>Soil erosion may affect yield.</li>
+              </ul>
+            </div>
+            <div class="cyclone-advice">
+              <i class="fa-solid fa-shield-halved"></i>
+              Maintain proper drainage and adequate plant spacing before the season.
+            </div>
+          </div>
+
+          {% elif result %}
+          <div class="cyclone-card-header safe">
+            <i class="fa-solid fa-shield-check" style="color:var(--green-light);font-size:.9rem"></i>
+            <h5>Cyclone Risk — Low</h5>
+          </div>
+          <div class="cyclone-card-body">
+            <div class="cyclone-safe-box">
+              <b style="color:var(--green-dark)">✔ Low Cyclone Impact</b>
+              <p class="mt-2 mb-0" style="font-size:.8rem;color:var(--text-mid)">
+                This crop is comparatively less vulnerable to cyclone conditions when proper drainage and plant care are maintained throughout the season.
+              </p>
+            </div>
+          </div>
+
+          {% else %}
+          <div class="cyclone-card-header neutral">
+            <i class="fa-solid fa-wind" style="color:#cfd8dc;font-size:.9rem"></i>
+            <h5>Cyclone Risk Alert</h5>
+          </div>
+          <div class="cyclone-card-body">
+            <div class="no-result-tip" style="padding:.8rem 0">
+              <div class="tip-placeholder-icon" style="font-size:1.6rem">🌀</div>
+              <p>Predict a crop to view its cyclone vulnerability assessment.</p>
+            </div>
+          </div>
+          {% endif %}
+
+        </div><!-- /cyclone-card -->
+
+      </div><!-- /sidebar-stack -->
+    </div><!-- /col-lg-5 -->
+
+  </div><!-- /row -->
+</div><!-- /container -->
+</div><!-- /predict-page -->
+
+<script>
+(function () {
+  const form = document.getElementById('predictForm');
+  const inputs = form ? form.querySelectorAll('input[name]') : [];
+
+  const sample = { N: 90, P: 40, K: 40, temperature: 20, humidity: 80, ph: 7, rainfall: 200 };
+
+  document.getElementById('btnSample')?.addEventListener('click', () => {
+    inputs.forEach(inp => {
+      if (sample[inp.name] !== undefined) inp.value = sample[inp.name];
+    });
+    // ripple-flash each input
+    inputs.forEach((inp, i) => {
+      setTimeout(() => {
+        inp.style.transition = 'background .2s';
+        inp.style.background = '#e8f5e9';
+        setTimeout(() => { inp.style.background = ''; }, 350);
+      }, i * 45);
+    });
+  });
+
+  // Animate inputs on focus
+  inputs.forEach(inp => {
+    inp.addEventListener('focus', () => {
+      inp.closest('.field-group')?.querySelector('.field-bar')?.style && null;
+    });
+  });
+})();
+</script>
+
+{% endblock %}

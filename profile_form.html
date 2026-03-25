@@ -1,0 +1,947 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if is_update %}Update{% else %}Create{% endif %} Profile — Crop Recommender{% endblock %}
+
+{% block extra_css %}
+<style>
+
+/* =========================================================
+   PAGE
+========================================================= */
+.profile-page {
+  padding: 2.5rem 0 4rem;
+  animation: pageIn .5s ease both;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+.profile-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  animation: fadeDown .55s ease both;
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.profile-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--green-base);
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  padding: .28rem .85rem;
+  margin-bottom: .7rem;
+}
+.profile-main-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.7rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .02em;
+  line-height: 1.15;
+  margin-bottom: .3rem;
+}
+.profile-main-title em {
+  font-style: italic;
+  color: var(--green-base);
+  font-weight: 400;
+}
+.profile-subtitle {
+  font-size: .84rem;
+  color: var(--text-soft);
+}
+
+/* =========================================================
+   SECTION CARDS
+========================================================= */
+.section-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  box-shadow: 0 3px 18px rgba(27,67,50,.08);
+  padding: 1.6rem 1.8rem;
+  margin-bottom: 1.4rem;
+  transition: box-shadow .28s;
+  animation: cardRise .5s ease both;
+}
+.section-card:hover {
+  box-shadow: 0 8px 32px rgba(27,67,50,.13);
+}
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.section-card:nth-child(1) { animation-delay: .05s; }
+.section-card:nth-child(2) { animation-delay: .10s; }
+.section-card:nth-child(3) { animation-delay: .15s; }
+.section-card:nth-child(4) { animation-delay: .20s; }
+.section-card:nth-child(5) { animation-delay: .25s; }
+.section-card:nth-child(6) { animation-delay: .30s; }
+.section-card:nth-child(7) { animation-delay: .35s; }
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  margin-bottom: 1.3rem;
+  padding-bottom: .85rem;
+  border-bottom: 1px solid var(--green-mist);
+}
+.section-head-icon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--green-mist);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--green-dark);
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+.section-head h5 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--green-dark);
+  letter-spacing: .03em;
+  margin: 0;
+}
+
+/* =========================================================
+   PROFILE IMAGE
+========================================================= */
+.profile-img-wrap {
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 3px dashed var(--green-base);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+  overflow: hidden;
+  position: relative;
+  background: var(--off-white);
+  cursor: pointer;
+  transition: border-color .25s, background .25s, transform .25s, box-shadow .25s;
+}
+.profile-img-wrap:hover {
+  border-color: var(--green-dark);
+  background: var(--green-mist);
+  transform: scale(1.03);
+  box-shadow: 0 8px 28px rgba(27,67,50,.16);
+}
+.profile-img-wrap img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.profile-img-wrap .img-guide {
+  position: absolute;
+  inset: 10px;
+  border: 1.5px dashed rgba(64,145,108,.4);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.img-placeholder {
+  text-align: center;
+  color: var(--text-soft);
+}
+.img-placeholder i {
+  font-size: 2.4rem;
+  color: var(--green-base);
+  margin-bottom: .4rem;
+  display: block;
+}
+.img-placeholder p {
+  font-size: .72rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Overlay hover hint */
+.img-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(27,67,50,.55);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity .25s;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  gap: .4rem;
+  flex-direction: column;
+}
+.profile-img-wrap:hover .img-overlay { opacity: 1; }
+
+/* =========================================================
+   FORM FIELDS
+========================================================= */
+.field-wrap {
+  margin-bottom: 1.1rem;
+}
+.field-label {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: .38rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.field-label i { color: var(--green-base); font-size: .65rem; }
+.field-label .req { color: #e53935; margin-left: .1rem; }
+
+/* Style all Django form inputs */
+.section-card input[type="text"],
+.section-card input[type="email"],
+.section-card input[type="tel"],
+.section-card input[type="number"],
+.section-card input[type="password"],
+.section-card select,
+.section-card textarea {
+  width: 100%;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 8px;
+  padding: .58rem .9rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .88rem;
+  color: var(--text-dark);
+  background: var(--white);
+  transition: border-color .22s, box-shadow .22s, background .22s;
+  appearance: none;
+}
+.section-card input:focus,
+.section-card select:focus,
+.section-card textarea:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3.5px rgba(64,145,108,.13);
+  outline: none;
+  background: #fafffd;
+}
+.section-card textarea { resize: vertical; min-height: 90px; }
+.section-card select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2340916c' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .85rem center;
+  padding-right: 2.2rem;
+}
+
+.error-message {
+  color: #e53935;
+  font-size: .72rem;
+  margin-top: .28rem;
+  letter-spacing: .02em;
+}
+.field-hint {
+  font-size: .7rem;
+  color: var(--text-soft);
+  margin-top: .2rem;
+}
+
+/* =========================================================
+   PHONE VERIFICATION
+========================================================= */
+.phone-row {
+  display: flex;
+  gap: .5rem;
+}
+.phone-row input { flex: 1; }
+
+.btn-send-code {
+  background: var(--white);
+  border: 1.5px solid var(--green-base);
+  color: var(--green-dark);
+  border-radius: 8px;
+  padding: .55rem 1rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all .22s;
+  flex-shrink: 0;
+}
+.btn-send-code:hover {
+  background: var(--green-mist);
+  border-color: var(--green-dark);
+}
+.btn-send-code:disabled { opacity: .6; cursor: not-allowed; }
+
+.verification-section {
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  margin-top: .9rem;
+  animation: slideDown .3s ease both;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.verify-input-row { display: flex; gap: .5rem; }
+.verification-input {
+  flex: 1;
+  letter-spacing: .5rem;
+  font-size: 1.3rem;
+  text-align: center;
+  font-weight: 700;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 8px;
+  padding: .5rem;
+  font-family: 'Cormorant Garamond', serif;
+  background: var(--white);
+  transition: border-color .22s, box-shadow .22s;
+}
+.verification-input:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3px rgba(64,145,108,.15);
+  outline: none;
+}
+.btn-verify {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  border: none;
+  color: var(--white);
+  border-radius: 8px;
+  padding: .5rem 1.1rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+  white-space: nowrap;
+}
+.btn-verify:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(27,67,50,.28); }
+
+.verification-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .9rem;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  margin-top: .5rem;
+}
+.verification-status.verified   { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.verification-status.unverified { background: #fff8e1; color: #e65100; border: 1px solid #ffe082; }
+
+/* =========================================================
+   INDIA FIELDS
+========================================================= */
+.india-fields { display: none; animation: slideDown .3s ease both; }
+.india-fields.show { display: block; }
+
+/* =========================================================
+   CROP / HELP CHECKBOX PILLS
+========================================================= */
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .4rem;
+}
+.pill-item input[type="checkbox"] { display: none; }
+.pill-item label {
+  display: inline-block;
+  padding: .35rem 1rem;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--text-mid);
+  background: var(--white);
+  transition: all .22s;
+  user-select: none;
+}
+.pill-item label:hover {
+  border-color: var(--green-base);
+  background: var(--green-mist);
+  color: var(--green-dark);
+}
+.pill-item input:checked + label {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  border-color: var(--green-dark);
+  color: var(--white);
+  box-shadow: 0 3px 10px rgba(27,67,50,.22);
+}
+
+/* =========================================================
+   SUBMIT BUTTON
+========================================================= */
+.btn-submit-wrap {
+  text-align: center;
+  margin-top: 1.5rem;
+  animation: cardRise .5s .4s ease both;
+}
+.btn-submit {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-base) 100%);
+  border: none;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .88rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .85rem 3rem;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(27,67,50,.28);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s, box-shadow .22s;
+}
+.btn-submit::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-submit:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(27,67,50,.38);
+}
+
+/* =========================================================
+   SUCCESS MODAL
+========================================================= */
+.success-checkmark {
+  width: 100px; height: 100px;
+  margin: 0 auto 1rem;
+}
+.check-icon { width: 100%; height: 100%; }
+.outer-circle {
+  stroke: var(--green-base);
+  stroke-width: 3;
+  fill: none;
+  stroke-dasharray: 160;
+  stroke-dashoffset: 160;
+  animation: drawCircle .9s ease-out forwards;
+}
+.icon-line {
+  stroke: var(--green-base);
+  stroke-width: 4;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+}
+.line-tip  { animation: drawCheck .45s ease-out forwards .95s; }
+.line-long { animation: drawCheck .55s ease-out forwards 1.05s; }
+@keyframes drawCircle { to { stroke-dashoffset: 0; } }
+@keyframes drawCheck  { to { stroke-dashoffset: 0; } }
+
+.approved-badge {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  background: var(--green-mist);
+  border: 1.5px solid var(--green-pale);
+  padding: .5rem 1.4rem;
+  border-radius: 50px;
+  display: inline-block;
+  box-shadow: 0 4px 14px rgba(27,67,50,.18);
+  animation: badgePop .6s ease-out forwards 1.4s;
+  opacity: 0;
+}
+@keyframes badgePop {
+  0%   { opacity: 0; transform: scale(.7) translateY(10px); }
+  60%  { transform: scale(1.1) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Form check styling */
+.form-check-input:checked {
+  background-color: var(--green-base);
+  border-color: var(--green-base);
+}
+.form-check-input:focus {
+  box-shadow: 0 0 0 3px rgba(64,145,108,.18);
+  border-color: var(--green-base);
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+<div class="container">
+<div class="row justify-content-center">
+<div class="col-lg-8 col-xl-7">
+
+  <!-- PAGE HEADER -->
+  <div class="profile-header">
+    <div class="profile-eyebrow">
+      <i class="fa-solid fa-user-circle"></i>
+      Farmer Profile
+    </div>
+    <h1 class="profile-main-title">
+      {% if is_update %}Update Your<br><em>Profile</em>{% else %}Create Your<br><em>Farmer Profile</em>{% endif %}
+    </h1>
+    <p class="profile-subtitle">Fill in your details to access all agricultural services and recommendations.</p>
+  </div>
+
+  <form id="profileForm" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- ── 1. PROFILE PHOTO ── -->
+    <div class="section-card text-center">
+      <div class="section-head" style="justify-content:center;border:none;margin-bottom:.8rem;padding-bottom:.5rem;">
+        <div class="section-head-icon"><i class="fa-solid fa-camera"></i></div>
+        <h5 style="margin:0">Profile Photo</h5>
+      </div>
+
+      <div class="profile-img-wrap"
+           onclick="document.getElementById('id_profile_image').click()"
+           title="Click to upload photo">
+        <div class="img-guide"></div>
+
+        {% if profile and profile.profile_image %}
+          <img src="{{ profile.profile_image.url }}" alt="Profile" id="imagePreview">
+        {% else %}
+          <div class="img-placeholder" id="imagePlaceholder">
+            <i class="fa-solid fa-user"></i>
+            <p>Click to upload<br><span style="font-size:.65rem;opacity:.7">Keep face within circle</span></p>
+          </div>
+          <img src="" alt="Preview" id="imagePreview" style="display:none">
+        {% endif %}
+
+        <div class="img-overlay">
+          <i class="fa-solid fa-camera"></i>
+          Change Photo
+        </div>
+      </div>
+
+      <input type="file" name="profile_image" id="id_profile_image"
+             accept="image/*" style="display:none" onchange="previewImage(this)">
+      <p class="field-hint mt-1">Recommended: Square image, face clearly visible</p>
+    </div>
+
+    <!-- ── 2. BASIC INFORMATION ── -->
+    <div class="section-card">
+      <div class="section-head">
+        <div class="section-head-icon"><i class="fa-solid fa-circle-info"></i></div>
+        <h5>Basic Information</h5>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label"><i class="fa-regular fa-user"></i> Full Name <span class="req">*</span></label>
+        {{ form.full_name }}
+        <div class="error-message" id="error_full_name"></div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-earth-asia"></i> Country <span class="req">*</span></label>
+            {{ form.country }}
+            <div class="error-message" id="error_country"></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-phone"></i> Phone Number <span class="req">*</span></label>
+            <div class="phone-row">
+              {{ form.phone }}
+              <button type="button" class="btn-send-code" id="sendCodeBtn" onclick="sendVerificationCode()">
+                <span class="spinner-border spinner-border-sm me-1 loading-spinner" id="sendSpinner" style="display:none"></span>
+                Send Code
+              </button>
+            </div>
+            <div class="error-message" id="error_phone"></div>
+
+            {% if profile and profile.phone_verified %}
+              <span class="verification-status verified mt-2">
+                <i class="fa-solid fa-circle-check"></i> Verified
+              </span>
+            {% else %}
+              <div class="verification-section" id="verificationSection" style="display:none">
+                <p class="field-label mb-2"><i class="fa-solid fa-shield-halved"></i> Enter Verification Code</p>
+                <div class="verify-input-row">
+                  <input type="text" class="verification-input" id="verificationCode"
+                         maxlength="6" placeholder="000000">
+                  <button type="button" class="btn-verify" onclick="verifyPhone()">Verify</button>
+                </div>
+                <div class="error-message" id="error_verification"></div>
+                <p class="field-hint mt-2" id="demoCode"></p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3. INDIA SPECIFIC ── -->
+    <div class="section-card india-fields" id="indiaFields" style="display:none">
+      <div class="section-head">
+        <div class="section-head-icon"><i class="fa-solid fa-id-card"></i></div>
+        <h5>Indian Document Details</h5>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-fingerprint"></i> PAN Number</label>
+            {{ form.pan_number }}
+            <p class="field-hint">Format: ABCDE1234F</p>
+            <div class="error-message" id="error_pan_number"></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-id-badge"></i> Aadhaar Number</label>
+            {{ form.aadhaar_number }}
+            <p class="field-hint">12-digit Aadhaar number</p>
+            <div class="error-message" id="error_aadhaar_number"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-check mt-1">
+            {{ form.pm_kisan_registered }}
+            <label class="form-check-label ms-1" for="id_pm_kisan_registered"
+                   style="font-size:.83rem;color:var(--text-mid)">
+              Registered in PM-KISAN Scheme
+            </label>
+          </div>
+        </div>
+        <div class="col-md-6" id="pmKisanIdField" style="display:none">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-hashtag"></i> PM-KISAN ID</label>
+            {{ form.pm_kisan_id }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 4. ADDRESS ── -->
+    <div class="section-card">
+      <div class="section-head">
+        <div class="section-head-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+        <h5>Address Details</h5>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label"><i class="fa-solid fa-location-dot"></i> Full Address</label>
+        {{ form.address }}
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-map"></i> State / Province</label>
+            {{ form.state }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-city"></i> District</label>
+            {{ form.district }}
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-house"></i> Village / Town</label>
+            {{ form.village }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-hashtag"></i> PIN / ZIP Code</label>
+            {{ form.pincode }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 5. FARMING DETAILS ── -->
+    <div class="section-card">
+      <div class="section-head">
+        <div class="section-head-icon"><i class="fa-solid fa-tractor"></i></div>
+        <h5>Farming Details</h5>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-ruler-combined"></i> Land Area</label>
+            {{ form.land_area }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="field-wrap">
+            <label class="field-label"><i class="fa-solid fa-scale-balanced"></i> Unit</label>
+            {{ form.land_unit }}
+          </div>
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label"><i class="fa-solid fa-seedling"></i> Current Crops</label>
+        <div class="pill-group">
+          {% for value, label in crop_choices %}
+          <div class="pill-item">
+            <input type="checkbox" name="current_crops" value="{{ value }}"
+                   id="crop_{{ value }}"
+                   {% if profile and value in profile.current_crops %}checked{% endif %}>
+            <label for="crop_{{ value }}">{{ label }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 6. ASSISTANCE ── -->
+    <div class="section-card">
+      <div class="section-head">
+        <div class="section-head-icon"><i class="fa-solid fa-hands-helping"></i></div>
+        <h5>Assistance Required</h5>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label"><i class="fa-solid fa-circle-question"></i> What type of help do you need?</label>
+        <div class="pill-group">
+          {% for value, label in help_choices %}
+          <div class="pill-item">
+            <input type="checkbox" name="help_needed" value="{{ value }}"
+                   id="help_{{ value }}"
+                   {% if profile and value in profile.help_needed %}checked{% endif %}>
+            <label for="help_{{ value }}">{{ label }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label"><i class="fa-solid fa-pen-to-square"></i> Describe your needs in detail</label>
+        {{ form.help_description }}
+      </div>
+    </div>
+
+    <!-- ── SUBMIT ── -->
+    <div class="btn-submit-wrap">
+      <button type="submit" class="btn-submit" id="submitBtn">
+        <i class="fa-solid fa-cloud-arrow-up me-2"></i>
+        {% if is_update %}Update Profile{% else %}Create Profile{% endif %}
+      </button>
+    </div>
+
+  </form>
+
+</div>
+</div>
+</div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 text-center p-4">
+
+      <div class="success-checkmark">
+        <svg class="check-icon" viewBox="0 0 52 52">
+          <circle class="outer-circle" cx="26" cy="26" r="24"/>
+          <path class="icon-line line-tip"  d="M14,27 L22,35 L38,19"/>
+          <path class="icon-line line-long" d="M14,27 L22,35 L38,19"/>
+        </svg>
+      </div>
+
+      <h4 class="success-message" style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:700;color:var(--green-dark)">
+        Profile Saved!
+      </h4>
+      <div class="approved-badge mt-2">
+        <i class="fa-solid fa-shield-halved me-1"></i>Government Verified ✓
+      </div>
+      <p class="field-hint mt-3">Redirecting to preview…</p>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF
+function getCookie(name) {
+  let v = null;
+  if (document.cookie) {
+    document.cookie.split(';').forEach(c => {
+      c = c.trim();
+      if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+    });
+  }
+  return v;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Image preview
+function previewImage(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById('imagePreview');
+      const ph  = document.getElementById('imagePlaceholder');
+      img.src = e.target.result;
+      img.style.display = 'block';
+      if (ph) ph.style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── Country / India fields toggle ──
+  const countryEl   = document.getElementById('country-select');
+  const indiaFields = document.getElementById('indiaFields');
+  const pmKisanCb   = document.getElementById('id_pm_kisan_registered');
+  const pmKisanFld  = document.getElementById('pmKisanIdField');
+
+  function toggleIndia() {
+    if (!countryEl) return;
+    indiaFields.style.display = countryEl.value === 'india' ? 'block' : 'none';
+  }
+  function togglePmKisan() {
+    if (!pmKisanCb || !pmKisanFld) return;
+    pmKisanFld.style.display = pmKisanCb.checked ? 'block' : 'none';
+  }
+
+  if (countryEl) { toggleIndia(); countryEl.addEventListener('change', toggleIndia); }
+  if (pmKisanCb) { togglePmKisan(); pmKisanCb.addEventListener('change', togglePmKisan); }
+
+  // ── Form submission ──
+  const form      = document.getElementById('profileForm');
+  const submitBtn = document.getElementById('submitBtn');
+  if (!form) return;
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const fd = new FormData(form);
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing…';
+
+    fetch(form.action || window.location.href, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+    })
+    .then(r => {
+      if (!r.ok) return r.text().then(t => { throw new Error(t); });
+      return r.json();
+    })
+    .then(data => {
+      if (data.success) {
+        window.location.href = data.redirect_url;
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-2"></i>{% if is_update %}Update Profile{% else %}Create Profile{% endif %}';
+        if (data.errors) {
+          Object.entries(data.errors).forEach(([f, errs]) => {
+            const el = document.getElementById('error_' + f);
+            if (el) el.textContent = errs.join(', ');
+          });
+        }
+        if (data.error) alert(data.error);
+      }
+    })
+    .catch(err => {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-2"></i>{% if is_update %}Update Profile{% else %}Create Profile{% endif %}';
+      alert('Server error. Check console (F12).');
+      console.error(err);
+    });
+  });
+});
+
+// Send verification code
+function sendVerificationCode() {
+  const phone   = document.getElementById('id_phone').value;
+  const btn     = document.getElementById('sendCodeBtn');
+  const spinner = document.getElementById('sendSpinner');
+
+  if (!phone || phone.length < 10) {
+    document.getElementById('error_phone').textContent = 'Please enter a valid phone number';
+    return;
+  }
+  spinner.style.display = 'inline-block';
+  btn.disabled = true;
+
+  fetch('{% url "recommender:send_verification_code" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+    body: JSON.stringify({ phone })
+  })
+  .then(r => r.json())
+  .then(data => {
+    spinner.style.display = 'none';
+    btn.disabled = false;
+    if (data.success) {
+      document.getElementById('verificationSection').style.display = 'block';
+      document.getElementById('error_phone').textContent = '';
+      if (data.demo_code)
+        document.getElementById('demoCode').textContent = 'Demo code: ' + data.demo_code;
+    } else {
+      document.getElementById('error_phone').textContent = data.error;
+    }
+  })
+  .catch(() => {
+    spinner.style.display = 'none';
+    btn.disabled = false;
+    document.getElementById('error_phone').textContent = 'Failed to send. Try again.';
+  });
+}
+
+// Verify phone
+function verifyPhone() {
+  const code = document.getElementById('verificationCode').value;
+  if (!code || code.length !== 6) {
+    document.getElementById('error_verification').textContent = 'Please enter the 6-digit code';
+    return;
+  }
+  fetch('{% url "recommender:verify_phone" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+    body: JSON.stringify({ code })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById('verificationSection').innerHTML = `
+        <span class="verification-status verified">
+          <i class="fa-solid fa-circle-check"></i>&nbsp;Phone Verified Successfully!
+        </span>`;
+    } else {
+      document.getElementById('error_verification').textContent = data.error;
+    }
+  })
+  .catch(() => {
+    document.getElementById('error_verification').textContent = 'Verification failed. Try again.';
+  });
+}
+</script>
+{% endblock %}

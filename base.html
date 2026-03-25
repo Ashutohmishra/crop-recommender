@@ -1,0 +1,744 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{% block title %}Crop Recommender{% endblock %}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Custom CSS -->
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+<style>
+/* =========================================================
+   CSS VARIABLES — GREEN & WHITE THEME
+========================================================= */
+:root {
+  --green-dark:    #1b4332;
+  --green-mid:     #2d6a4f;
+  --green-base:    #40916c;
+  --green-light:   #74c69d;
+  --green-pale:    #b7e4c7;
+  --green-mist:    #d8f3dc;
+  --white:         #ffffff;
+  --off-white:     #f4faf6;
+  --text-dark:     #1a2e22;
+  --text-mid:      #2d4a38;
+  --text-soft:     #5a7f6a;
+  --shadow-sm:     rgba(27, 67, 50, 0.10);
+  --shadow-md:     rgba(27, 67, 50, 0.20);
+  --shadow-lg:     rgba(27, 67, 50, 0.32);
+  --nav-h:         68px;
+}
+
+/* =========================================================
+   RESET & BASE
+========================================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background-color: var(--off-white);
+  color: var(--text-dark);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Subtle green dot pattern */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .04;
+  background-image: radial-gradient(var(--green-base) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* =========================================================
+   NAVBAR
+========================================================= */
+.navbar {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%) !important;
+  height: var(--nav-h);
+  border-bottom: 3px solid var(--green-light);
+  box-shadow: 0 4px 28px var(--shadow-lg);
+  position: sticky;
+  top: 0;
+  z-index: 1040;
+  transition: box-shadow .3s;
+}
+
+/* Shimmer glow line below navbar */
+.navbar::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg,
+    transparent 0%, var(--green-light) 30%,
+    var(--white) 50%, var(--green-light) 70%, transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: navShimmer 3.5s ease-in-out infinite;
+  opacity: .5;
+}
+@keyframes navShimmer {
+  0%,100% { background-position: 0%   50%; opacity:.35; }
+  50%      { background-position: 100% 50%; opacity:.7;  }
+}
+
+/* BRAND */
+.navbar-brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--white) !important;
+  letter-spacing: .04em;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  transition: color .25s, letter-spacing .25s;
+}
+.navbar-brand:hover { color: var(--green-pale) !important; letter-spacing: .07em; }
+
+.brand-icon {
+  color: var(--green-light);
+  animation: sway 3.8s ease-in-out infinite;
+  display: inline-block;
+  transform-origin: bottom center;
+  font-size: 1.35rem;
+}
+@keyframes sway {
+  0%,100% { transform: rotate(-7deg); }
+  50%      { transform: rotate( 7deg); }
+}
+
+/* NAV LINKS */
+.nav-link {
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 500;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.88) !important;
+  padding: .45rem .9rem !important;
+  border-radius: 5px;
+  position: relative;
+  transition: color .25s, background .25s;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 5px; left: 50%; right: 50%;
+  height: 2px;
+  background: var(--green-light);
+  border-radius: 1px;
+  transition: left .3s, right .3s;
+}
+.nav-link:hover::after, .nav-link.active::after { left: 12%; right: 12%; }
+.nav-link:hover, .nav-link.active {
+  color: var(--white) !important;
+  background: rgba(255,255,255,.12);
+}
+.nav-link i { margin-right: .32rem; font-size: .78rem; }
+
+/* DROPDOWN */
+.dropdown-menu {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 8px;
+  box-shadow: 0 14px 44px var(--shadow-lg);
+  padding: .5rem 0;
+  animation: dropIn .2s ease;
+  min-width: 11rem;
+}
+@keyframes dropIn {
+  from { opacity:0; transform:translateY(-8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.dropdown-item {
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  color: var(--text-mid);
+  padding: .45rem 1.2rem;
+  letter-spacing: .03em;
+  transition: background .2s, color .2s, padding-left .2s;
+}
+.dropdown-item:hover {
+  background: var(--green-mist);
+  color: var(--green-dark);
+  padding-left: 1.6rem;
+}
+.dropdown-item i { color: var(--green-base); }
+.dropdown-divider { border-color: var(--green-pale); margin: .35rem 0; }
+
+/* Google Translate */
+#google_translate_element { margin-left: 1rem; display: flex; align-items: center; }
+#google_translate_element select {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.35);
+  color: var(--white);
+  border-radius: 4px;
+  font-size: .75rem;
+  padding: .25rem .5rem;
+  cursor: pointer;
+}
+
+/* =========================================================
+   ANIMATED GRADIENT STRIP
+========================================================= */
+.page-hero-strip {
+  width: 100%;
+  height: 5px;
+  background: linear-gradient(90deg,
+    var(--green-dark), var(--green-base), var(--green-light),
+    var(--white), var(--green-light), var(--green-base), var(--green-dark)
+  );
+  background-size: 300% 100%;
+  animation: stripFlow 5s linear infinite;
+}
+@keyframes stripFlow {
+  0%   { background-position: 0%   50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+main.container {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp .5s ease both;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(18px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* =========================================================
+   CARDS
+========================================================= */
+.card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 12px;
+  box-shadow: 0 2px 16px var(--shadow-sm);
+  transition: transform .28s, box-shadow .28s;
+  overflow: hidden;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px var(--shadow-md);
+}
+.card-header {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  color: var(--white);
+  border-bottom: none;
+  padding: 1rem 1.4rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn-success, .btn-primary {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-base) 100%);
+  border: none;
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: .82rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .6rem 1.7rem;
+  border-radius: 6px;
+  box-shadow: 0 3px 14px var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+  transition: transform .22s, box-shadow .22s;
+}
+.btn-success::before, .btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-success:hover, .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--shadow-lg);
+  background: linear-gradient(135deg, var(--green-mid) 0%, var(--green-dark) 100%);
+  color: var(--white);
+}
+.btn-outline-success {
+  border: 2px solid var(--green-base);
+  color: var(--green-dark);
+  font-weight: 600;
+  letter-spacing: .06em;
+  font-size: .82rem;
+  text-transform: uppercase;
+  transition: all .22s;
+  border-radius: 6px;
+  padding: .55rem 1.5rem;
+}
+.btn-outline-success:hover {
+  background: var(--green-base);
+  color: var(--white);
+  border-color: var(--green-base);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px var(--shadow-md);
+}
+
+/* =========================================================
+   FORM CONTROLS
+========================================================= */
+.form-control, .form-select {
+  border: 1.5px solid var(--green-pale);
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .9rem;
+  color: var(--text-dark);
+  background: var(--white);
+  transition: border-color .22s, box-shadow .22s;
+  padding: .55rem .9rem;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--green-base);
+  box-shadow: 0 0 0 3px rgba(64,145,108,.18);
+  outline: none;
+}
+.form-label {
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+  margin-bottom: .4rem;
+}
+
+/* =========================================================
+   TABLE
+========================================================= */
+.table thead th {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .78rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border: none;
+  padding: .9rem 1rem;
+}
+.table tbody tr { transition: background .2s; }
+.table tbody tr:hover { background: var(--green-mist); }
+.table tbody td {
+  font-size: .88rem;
+  vertical-align: middle;
+  border-color: var(--green-pale);
+  padding: .75rem 1rem;
+  color: var(--text-mid);
+}
+
+/* =========================================================
+   FOOTER
+========================================================= */
+footer.footer {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%) !important;
+  border-top: 3px solid var(--green-light);
+  color: var(--white) !important;
+  padding: 1.8rem 0 1.3rem;
+  position: relative;
+  z-index: 1;
+}
+footer.footer::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--green-light), var(--white), var(--green-light), transparent);
+  opacity: .4;
+  margin-bottom: 1rem;
+}
+.footer-brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--white);
+  letter-spacing: .06em;
+  margin-bottom: .25rem;
+}
+.footer-brand i { color: var(--green-light); }
+.footer-tagline {
+  font-size: .75rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--green-pale);
+  opacity: .85;
+}
+.footer-divider {
+  border: none;
+  border-top: 1px solid rgba(183,228,199,.2);
+  margin: .75rem auto;
+  width: 55%;
+}
+.footer-copy { font-size: .73rem; color: rgba(255,255,255,.45); }
+
+/* =========================================================
+   SUCCESS MODAL
+========================================================= */
+.modal-content {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px var(--shadow-lg);
+}
+.checkmark-circle {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  animation: popIn .5s cubic-bezier(.175,.885,.32,1.275) both;
+  box-shadow: 0 6px 24px var(--shadow-md);
+}
+@keyframes popIn {
+  from { transform: scale(0); opacity:0; }
+  to   { transform: scale(1); opacity:1; }
+}
+.checkmark {
+  width: 36px; height: 36px;
+  border-right: 4px solid var(--white);
+  border-bottom: 4px solid var(--white);
+  transform: rotate(45deg) translateY(-5px);
+  animation: drawCheck .4s .42s ease both;
+  opacity: 0;
+}
+@keyframes drawCheck {
+  from { opacity:0; transform: rotate(45deg) scale(.4) translateY(-5px); }
+  to   { opacity:1; transform: rotate(45deg) scale(1)  translateY(-5px); }
+}
+.success-message {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem;
+  color: var(--green-dark);
+  font-weight: 600;
+}
+
+/* =========================================================
+   FLOATING LEAF DECORATIONS
+========================================================= */
+.leaf-deco {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .07;
+  color: var(--green-base);
+  user-select: none;
+  font-size: clamp(3rem, 5vw, 5rem);
+}
+.leaf-deco.ld-1 { top: 10%; right: 2%; animation: floatLeaf 7s ease-in-out infinite; }
+.leaf-deco.ld-2 { bottom: 20%; left: 2%; font-size: 3.5rem; animation: floatLeaf 9s 2s ease-in-out infinite; }
+.leaf-deco.ld-3 { top: 52%; right: 1.5%; font-size: 2.5rem; animation: floatLeaf 6s 1s ease-in-out infinite; }
+@keyframes floatLeaf {
+  0%,100% { transform: translateY(0)    rotate(-8deg); }
+  50%      { transform: translateY(-16px) rotate(8deg); }
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+::-webkit-scrollbar { width: 7px; }
+::-webkit-scrollbar-track { background: var(--off-white); }
+::-webkit-scrollbar-thumb { background: var(--green-light); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--green-base); }
+
+/* =========================================================
+   UTILITY CLASSES
+========================================================= */
+.text-green-dark { color: var(--green-dark) !important; }
+.text-green-base { color: var(--green-base) !important; }
+.bg-green-mist   { background: var(--green-mist) !important; }
+.bg-green-dark   { background: var(--green-dark) !important; }
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  color: var(--green-dark);
+  letter-spacing: .02em;
+}
+.section-title::after {
+  content: '';
+  display: block;
+  width: 44px; height: 3px;
+  background: linear-gradient(90deg, var(--green-base), var(--green-light));
+  border-radius: 2px;
+  margin-top: 6px;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+@media (max-width: 991px) {
+  .navbar { height: auto; padding: .75rem 1rem; }
+  .navbar-collapse { padding: .6rem 0 .4rem; }
+  .nav-link::after { display: none; }
+  .nav-link { margin: 2px 0; }
+  .dropdown-menu { border: none; background: rgba(255,255,255,.08); box-shadow: none; animation: none; }
+  .dropdown-item { color: rgba(255,255,255,.85); }
+  .dropdown-item:hover { background: rgba(255,255,255,.12); color: var(--white); }
+}
+</style>
+
+{% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+<!-- Floating leaf decorations -->
+<span class="leaf-deco ld-1" aria-hidden="true">🌿</span>
+<span class="leaf-deco ld-2" aria-hidden="true">🍃</span>
+<span class="leaf-deco ld-3" aria-hidden="true">🌱</span>
+
+<!-- ================= NAVBAR ================= -->
+<nav class="navbar navbar-expand-lg">
+<div class="container">
+
+  <!-- BRAND -->
+  <a class="navbar-brand" href="{% url 'recommender:home' %}">
+    <i class="fa-solid fa-wheat-awn brand-icon"></i>
+    Crop Recommender
+  </a>
+
+  <!-- TOGGLER -->
+  <button class="navbar-toggler border-0" type="button"
+          data-bs-toggle="collapse" data-bs-target="#abc"
+          aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <!-- MENU -->
+  <div class="collapse navbar-collapse" id="abc">
+    <ul class="navbar-nav ms-auto align-items-lg-center">
+
+      {% if user.is_authenticated and not user.is_staff %}
+
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:predict' %}">
+            <i class="fa-solid fa-flask"></i> Predict
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:user_history' %}">
+            <i class="fa-solid fa-clock-rotate-left"></i> History
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:profile_form' %}">
+            <i class="fa-solid fa-user"></i> Profile
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:change_password' %}">
+            <i class="fa-solid fa-key"></i> Password
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:logout' %}">
+            <i class="fa-solid fa-right-from-bracket"></i> Logout
+          </a>
+        </li>
+
+      {% elif user.is_authenticated and user.is_staff %}
+
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:admin_dashboard' %}">
+            <i class="fa-solid fa-gauge"></i> Dashboard
+          </a>
+        </li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" role="button"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-seedling"></i> Predictions
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'rice' %}"><i class="fa-solid fa-bowl-rice me-2"></i>Rice</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'maize' %}"><i class="fa-solid fa-circle-dot me-2"></i>Maize</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'chickpea' %}"><i class="fa-solid fa-circle-dot me-2"></i>Chickpea</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'kidneybeans' %}"><i class="fa-solid fa-circle-dot me-2"></i>Kidney Beans</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'pigeonpeas' %}"><i class="fa-solid fa-circle-dot me-2"></i>Pigeon Peas</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'mothbeans' %}"><i class="fa-solid fa-circle-dot me-2"></i>Moth Beans</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'mungbean' %}"><i class="fa-solid fa-circle-dot me-2"></i>Mung Bean</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'blackgram' %}"><i class="fa-solid fa-circle-dot me-2"></i>Black Gram</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'lentil' %}"><i class="fa-solid fa-circle-dot me-2"></i>Lentil</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'pomegranate' %}"><i class="fa-solid fa-apple-whole me-2"></i>Pomegranate</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'banana' %}"><i class="fa-solid fa-apple-whole me-2"></i>Banana</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'mango' %}"><i class="fa-solid fa-apple-whole me-2"></i>Mango</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'grapes' %}"><i class="fa-solid fa-apple-whole me-2"></i>Grapes</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'watermelon' %}"><i class="fa-solid fa-apple-whole me-2"></i>Watermelon</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'muskmelon' %}"><i class="fa-solid fa-apple-whole me-2"></i>Muskmelon</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'apple' %}"><i class="fa-solid fa-apple-whole me-2"></i>Apple</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'orange' %}"><i class="fa-solid fa-apple-whole me-2"></i>Orange</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'papaya' %}"><i class="fa-solid fa-apple-whole me-2"></i>Papaya</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'coconut' %}"><i class="fa-solid fa-apple-whole me-2"></i>Coconut</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'cotton' %}"><i class="fa-solid fa-leaf me-2"></i>Cotton</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'jute' %}"><i class="fa-solid fa-leaf me-2"></i>Jute</a></li>
+            <li><a class="dropdown-item" href="{% url 'recommender:prediction_analysis' 'coffee' %}"><i class="fa-solid fa-leaf me-2"></i>Coffee</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:user_view' %}">
+            <i class="fa-solid fa-users"></i> Users
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:change_password' %}">
+            <i class="fa-solid fa-key"></i>  Change Password
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:logout' %}">
+            <i class="fa-solid fa-right-from-bracket"></i> Logout
+          </a>
+        </li>
+
+      {% else %}
+
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:home' %}">
+            <i class="fa-solid fa-house"></i> Home
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:login' %}">
+            <i class="fa-solid fa-right-to-bracket"></i> Login
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:signup' %}">
+            <i class="fa-solid fa-user-plus"></i> Signup
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'recommender:admin_login' %}">
+            <i class="fa-solid fa-lock"></i> Admin
+          </a>
+        </li>
+
+      {% endif %}
+
+    </ul>
+
+    <!-- GOOGLE TRANSLATE -->
+    <div id="google_translate_element"></div>
+  </div>
+</div>
+</nav>
+
+<!-- Animated colour strip -->
+<div class="page-hero-strip" aria-hidden="true"></div>
+
+<!-- ================= MAIN CONTENT ================= -->
+<main class="container py-4">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer mt-auto">
+  <div class="container text-center">
+    <div class="footer-brand">
+      <i class="fa-solid fa-wheat-awn me-2"></i>Crop Recommender
+    </div>
+    <div class="footer-tagline">Farmer Support System</div>
+    <hr class="footer-divider">
+    <div class="footer-copy">© 2026 Crop Recommender &nbsp;·&nbsp; Grown with care for farmers</div>
+  </div>
+</footer>
+
+<!-- ================= SUCCESS MODAL ================= -->
+<div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0">
+      <div class="modal-body text-center py-5">
+        <div class="success-animation mb-3">
+          <div class="checkmark-circle">
+            <div class="checkmark draw"></div>
+          </div>
+        </div>
+        <h4 class="mt-3 success-message"></h4>
+        <p class="text-muted mt-2" style="font-size:.82rem;letter-spacing:.05em;">
+          Redirecting to your profile…
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js"></script>
+
+{% if messages %}
+{% for message in messages %}
+<script>
+swal({
+  title: "{{ message }}",
+  icon: "{{ message.tags }}",
+  button: "OK",
+});
+</script>
+{% endfor %}
+{% endif %}
+
+<!-- Navbar scroll shadow -->
+<script>
+window.addEventListener('scroll', () => {
+  const nav = document.querySelector('.navbar');
+  nav.style.boxShadow = window.scrollY > 12
+    ? '0 8px 40px rgba(27,67,50,0.45)'
+    : '0 4px 28px rgba(27,67,50,0.32)';
+});
+</script>
+
+<!-- GOOGLE TRANSLATE -->
+<script>
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement(
+    {
+      pageLanguage: 'en',
+      includedLanguages: 'en,hi,or,bn,ta,te',
+      layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+    },
+    'google_translate_element'
+  );
+}
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

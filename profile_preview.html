@@ -1,0 +1,737 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ profile.full_name }} — Kissan Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+
+/* =========================================================
+   PAGE
+========================================================= */
+.preview-page {
+  padding-bottom: 5rem;
+  animation: pageIn .5s ease both;
+}
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================
+   HERO BANNER
+========================================================= */
+.profile-hero {
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 55%, var(--green-base) 100%);
+  padding: 3rem 0 5rem;
+  position: relative;
+  overflow: hidden;
+  animation: heroIn .65s ease both;
+}
+@keyframes heroIn {
+  from { opacity: 0; transform: translateY(-18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Wave cutout at bottom */
+.profile-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 52px;
+  background: var(--off-white);
+  clip-path: ellipse(55% 100% at 50% 100%);
+}
+
+/* Shimmer strip */
+.profile-hero::before {
+  content: '';
+  position: absolute;
+  bottom: 50px; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent, var(--green-light), #fff, var(--green-light), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3.5s ease-in-out infinite;
+  opacity: .45;
+}
+@keyframes shimmer {
+  0%,100% { background-position: 0%   50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* Decorative circles */
+.hero-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(116,198,157,.1);
+  pointer-events: none;
+}
+.hero-circle.c1 { width: 260px; height: 260px; top: -80px; right: -60px; animation: breathe 6s ease-in-out infinite; }
+.hero-circle.c2 { width: 150px; height: 150px; top: -30px; right: -10px; animation: breathe 6s 1.5s ease-in-out infinite; }
+.hero-circle.c3 { width: 180px; height: 180px; bottom: 30px; left: -60px; animation: breathe 7s 1s ease-in-out infinite; }
+@keyframes breathe {
+  0%,100% { transform: scale(1);    opacity: .6; }
+  50%      { transform: scale(1.12); opacity: 1;  }
+}
+
+.hero-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.75);
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 20px;
+  padding: .28rem .85rem;
+  margin-bottom: .5rem;
+}
+
+/* =========================================================
+   PROFILE CARD (main white block)
+========================================================= */
+.profile-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 20px;
+  box-shadow: 0 8px 48px rgba(27,67,50,.12);
+  overflow: hidden;
+  margin-top: -60px;
+  position: relative;
+  z-index: 10;
+  animation: cardRise .65s .15s ease both;
+}
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Avatar section */
+.avatar-section {
+  padding: 2rem 1.5rem 1.2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--green-mist);
+}
+.avatar-wrap {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+.profile-avatar {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  border: 4px solid var(--white);
+  box-shadow: 0 6px 28px rgba(27,67,50,.22);
+  display: block;
+  animation: avatarPop .65s .3s cubic-bezier(.175,.885,.32,1.275) both;
+}
+@keyframes avatarPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.avatar-placeholder {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  border: 4px solid var(--white);
+  box-shadow: 0 6px 28px rgba(27,67,50,.22);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--white);
+  animation: avatarPop .65s .3s cubic-bezier(.175,.885,.32,1.275) both;
+}
+
+.verified-badge {
+  position: absolute;
+  bottom: 4px; right: 4px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  border: 3px solid var(--white);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--white);
+  font-size: .7rem;
+  box-shadow: 0 3px 10px rgba(27,67,50,.3);
+  animation: badgePop .5s .8s cubic-bezier(.175,.885,.32,1.275) both;
+  opacity: 0;
+}
+@keyframes badgePop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.profile-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  color: var(--green-dark);
+  letter-spacing: .02em;
+  margin-bottom: .25rem;
+}
+.profile-location {
+  font-size: .82rem;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  margin-bottom: .75rem;
+}
+.profile-location i { color: var(--green-base); font-size: .75rem; }
+
+.govt-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  color: var(--white);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .4rem 1.1rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(27,67,50,.25);
+  animation: badgePop .5s .9s cubic-bezier(.175,.885,.32,1.275) both;
+  opacity: 0;
+}
+
+/* Stats row */
+.stats-strip {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--green-mist);
+}
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: .5rem 1rem;
+  border-right: 1px solid var(--green-mist);
+  animation: statIn .45s ease both;
+}
+.stat-item:last-child { border-right: none; }
+.stat-item:nth-child(1) { animation-delay: .3s; }
+.stat-item:nth-child(2) { animation-delay: .38s; }
+.stat-item:nth-child(3) { animation-delay: .46s; }
+@keyframes statIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stat-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1.1;
+}
+.stat-lbl {
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-top: .15rem;
+}
+
+/* Action row */
+.action-row {
+  display: flex;
+  justify-content: center;
+  gap: .5rem;
+  padding: 1rem 1.5rem;
+}
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  background: transparent;
+  border: 1.5px solid var(--green-pale);
+  border-radius: 10px;
+  color: var(--text-soft);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .7rem 1.3rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .22s;
+}
+.action-btn i { font-size: 1.1rem; color: var(--green-base); transition: transform .22s; }
+.action-btn:hover {
+  background: var(--green-mist);
+  border-color: var(--green-base);
+  color: var(--green-dark);
+  transform: translateY(-2px);
+}
+.action-btn:hover i { transform: scale(1.15); }
+
+/* =========================================================
+   INFO CARDS
+========================================================= */
+.info-card {
+  background: var(--white);
+  border: 1px solid var(--green-pale);
+  border-radius: 14px;
+  box-shadow: 0 3px 18px rgba(27,67,50,.07);
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+  transition: transform .28s, box-shadow .28s;
+  animation: cardRise .5s ease both;
+}
+.info-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(27,67,50,.13);
+}
+.info-card:nth-child(1) { animation-delay: .1s; }
+.info-card:nth-child(2) { animation-delay: .16s; }
+.info-card:nth-child(3) { animation-delay: .22s; }
+.info-card:nth-child(4) { animation-delay: .28s; }
+.info-card:nth-child(5) { animation-delay: .34s; }
+
+.info-card-header {
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  padding: .85rem 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.info-card-header h5 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--white);
+  letter-spacing: .04em;
+  margin: 0;
+}
+.info-card-header i { color: rgba(255,255,255,.8); font-size: .88rem; }
+.info-card-header.docs-header  { background: linear-gradient(135deg, #0d47a1, #1976d2); }
+.info-card-header.farm-header  { background: linear-gradient(135deg, #2e7d32, var(--green-base)); }
+.info-card-header.help-header  { background: linear-gradient(135deg, #00695c, #00897b); }
+.info-card-header.meta-header  { background: linear-gradient(135deg, #37474f, #546e7a); }
+
+.info-card-body { padding: .6rem 1.3rem; }
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--green-mist);
+}
+.info-row:last-child { border-bottom: none; }
+
+.info-lbl {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  padding-top: .1rem;
+}
+.info-val {
+  flex: 1;
+  font-size: .86rem;
+  color: var(--text-dark);
+  font-weight: 500;
+  line-height: 1.45;
+}
+.info-val.verified { color: var(--green-dark); }
+.info-val.verified i { color: var(--green-base); margin-left: .3rem; font-size: .75rem; }
+
+/* Crop / help pills */
+.pill-group { display: flex; flex-wrap: wrap; gap: .4rem; }
+.crop-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: var(--green-mist);
+  border: 1px solid var(--green-pale);
+  color: var(--green-dark);
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .25rem .75rem;
+}
+.help-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: #e3f2fd;
+  border: 1px solid #bbdefb;
+  color: #0d47a1;
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .25rem .75rem;
+}
+
+/* =========================================================
+   FLOATING EDIT BUTTON
+========================================================= */
+.float-edit {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-base));
+  color: var(--white);
+  border: none;
+  box-shadow: 0 6px 24px rgba(27,67,50,.38);
+  font-size: 1.15rem;
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+  z-index: 100;
+  transition: transform .25s, box-shadow .25s;
+  animation: floatIn .5s 1s cubic-bezier(.175,.885,.32,1.275) both;
+  opacity: 0;
+}
+@keyframes floatIn {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.float-edit:hover {
+  transform: scale(1.12) rotate(10deg);
+  box-shadow: 0 10px 32px rgba(27,67,50,.48);
+  color: var(--white);
+}
+
+/* Print */
+@media print {
+  .float-edit, .action-row, .profile-hero { display: none !important; }
+  .profile-card { margin-top: 0; }
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="preview-page">
+
+  <!-- HERO BANNER -->
+  <div class="profile-hero">
+    <div class="hero-circle c1"></div>
+    <div class="hero-circle c2"></div>
+    <div class="hero-circle c3"></div>
+    <div class="container text-center" style="position:relative;z-index:2;">
+      <div class="hero-label">
+        <i class="fa-solid fa-seedling"></i> Kissan Profile
+      </div>
+      <p style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;color:rgba(255,255,255,.85);margin:0;letter-spacing:.04em;">
+        Farmer Identity Card
+      </p>
+    </div>
+  </div>
+
+  <div class="container">
+  <div class="row justify-content-center">
+  <div class="col-lg-9 col-xl-8">
+
+    <!-- PROFILE CARD -->
+    <div class="profile-card">
+
+      <!-- Avatar & Name -->
+      <div class="avatar-section">
+        <div class="avatar-wrap">
+          {% if profile.profile_image %}
+            <img src="{{ profile.profile_image.url }}"
+                 alt="{{ profile.full_name }}"
+                 class="profile-avatar">
+          {% else %}
+            <div class="avatar-placeholder">
+              {{ profile.full_name|first|upper }}
+            </div>
+          {% endif %}
+          {% if profile.govt_verified %}
+            <div class="verified-badge" title="Government Verified">
+              <i class="fa-solid fa-check"></i>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="profile-name">{{ profile.full_name }}</div>
+        <div class="profile-location">
+          <i class="fa-solid fa-location-dot"></i>
+          {% if profile.village %}{{ profile.village }},&nbsp;{% endif %}
+          {% if profile.district %}{{ profile.district }},&nbsp;{% endif %}
+          {{ profile.get_country_display }}
+        </div>
+
+        {% if profile.govt_verified %}
+          <div class="govt-banner">
+            <i class="fa-solid fa-shield-halved"></i> Government Verified Profile
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Stats strip -->
+      <div class="stats-strip">
+        <div class="stat-item">
+          <div class="stat-num">{{ profile.current_crops|length }}</div>
+          <div class="stat-lbl">Crops</div>
+        </div>
+        {% if profile.land_area %}
+        <div class="stat-item">
+          <div class="stat-num">{{ profile.land_area }}</div>
+          <div class="stat-lbl">{{ profile.land_unit|title }}</div>
+        </div>
+        {% endif %}
+        <div class="stat-item">
+          <div class="stat-num">
+            {% if profile.phone_verified %}
+              <i class="fa-solid fa-circle-check" style="color:var(--green-base);font-size:1.3rem"></i>
+            {% else %}
+              <i class="fa-solid fa-circle-xmark" style="color:#fb8c00;font-size:1.3rem"></i>
+            {% endif %}
+          </div>
+          <div class="stat-lbl">Phone</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <button class="action-btn" onclick="window.print()">
+          <i class="fa-solid fa-print"></i> Print
+        </button>
+        <button class="action-btn" onclick="shareProfile()">
+          <i class="fa-solid fa-share-nodes"></i> Share
+        </button>
+        <a href="{% url 'recommender:profile_form' %}" class="action-btn">
+          <i class="fa-solid fa-pen-to-square"></i> Edit
+        </a>
+      </div>
+
+    </div><!-- /profile-card -->
+
+    <!-- INFO CARDS -->
+    <div class="row mt-4 g-3">
+
+      <!-- Contact -->
+      <div class="col-lg-6">
+        <div class="info-card">
+          <div class="info-card-header">
+            <i class="fa-solid fa-address-book"></i>
+            <h5>Contact Information</h5>
+          </div>
+          <div class="info-card-body">
+            <div class="info-row">
+              <span class="info-lbl">Phone</span>
+              <span class="info-val {% if profile.phone_verified %}verified{% endif %}">
+                {{ profile.phone }}
+                {% if profile.phone_verified %}<i class="fa-solid fa-circle-check"></i>{% endif %}
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-lbl">Country</span>
+              <span class="info-val">{{ profile.get_country_display }}</span>
+            </div>
+            {% if profile.state %}
+            <div class="info-row">
+              <span class="info-lbl">State</span>
+              <span class="info-val">{{ profile.state }}</span>
+            </div>
+            {% endif %}
+            {% if profile.district %}
+            <div class="info-row">
+              <span class="info-lbl">District</span>
+              <span class="info-val">{{ profile.district }}</span>
+            </div>
+            {% endif %}
+            {% if profile.village %}
+            <div class="info-row">
+              <span class="info-lbl">Village</span>
+              <span class="info-val">{{ profile.village }}</span>
+            </div>
+            {% endif %}
+            {% if profile.pincode %}
+            <div class="info-row">
+              <span class="info-lbl">PIN Code</span>
+              <span class="info-val">{{ profile.pincode }}</span>
+            </div>
+            {% endif %}
+            {% if profile.address %}
+            <div class="info-row">
+              <span class="info-lbl">Address</span>
+              <span class="info-val">{{ profile.address }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Indian Documents -->
+      {% if profile.is_indian %}
+      <div class="col-lg-6">
+        <div class="info-card">
+          <div class="info-card-header docs-header">
+            <i class="fa-solid fa-id-card"></i>
+            <h5>Indian Documents</h5>
+          </div>
+          <div class="info-card-body">
+            {% if profile.pan_number %}
+            <div class="info-row">
+              <span class="info-lbl">PAN</span>
+              <span class="info-val">{{ profile.pan_number }}</span>
+            </div>
+            {% endif %}
+            {% if profile.aadhaar_number %}
+            <div class="info-row">
+              <span class="info-lbl">Aadhaar</span>
+              <span class="info-val">XXXX-XXXX-{{ profile.aadhaar_number|slice:"-4:" }}</span>
+            </div>
+            {% endif %}
+            <div class="info-row">
+              <span class="info-lbl">PM-KISAN</span>
+              <span class="info-val {% if profile.pm_kisan_registered %}verified{% endif %}">
+                {% if profile.pm_kisan_registered %}
+                  Registered{% if profile.pm_kisan_id %} (ID: {{ profile.pm_kisan_id }}){% endif %}
+                  <i class="fa-solid fa-circle-check"></i>
+                {% else %}
+                  Not Registered
+                {% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Farming Details -->
+      <div class="col-lg-6">
+        <div class="info-card">
+          <div class="info-card-header farm-header">
+            <i class="fa-solid fa-tractor"></i>
+            <h5>Farming Details</h5>
+          </div>
+          <div class="info-card-body">
+            {% if profile.land_area %}
+            <div class="info-row">
+              <span class="info-lbl">Land Area</span>
+              <span class="info-val">{{ profile.land_area }} {{ profile.land_unit|title }}</span>
+            </div>
+            {% endif %}
+            <div class="info-row">
+              <span class="info-lbl">Current Crops</span>
+              <div class="info-val">
+                {% if crops_display %}
+                  <div class="pill-group">
+                    {% for crop in crops_display %}
+                      <span class="crop-pill"><i class="fa-solid fa-seedling" style="font-size:.6rem"></i>{{ crop }}</span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span style="color:var(--text-soft);font-size:.82rem">Not specified</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assistance Required -->
+      <div class="col-lg-6">
+        <div class="info-card">
+          <div class="info-card-header help-header">
+            <i class="fa-solid fa-hands-helping"></i>
+            <h5>Assistance Required</h5>
+          </div>
+          <div class="info-card-body">
+            <div class="info-row">
+              <div class="info-val w-100">
+                {% if help_display %}
+                  <div class="pill-group">
+                    {% for h in help_display %}
+                      <span class="help-pill"><i class="fa-solid fa-circle-question" style="font-size:.6rem"></i>{{ h }}</span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span style="color:var(--text-soft);font-size:.82rem">No specific assistance requested</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if profile.help_description %}
+            <div class="info-row">
+              <span class="info-lbl">Details</span>
+              <span class="info-val">{{ profile.help_description }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Meta -->
+      <div class="col-12">
+        <div class="info-card">
+          <div class="info-card-header meta-header">
+            <i class="fa-solid fa-circle-info"></i>
+            <h5>Profile Information</h5>
+          </div>
+          <div class="info-card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="info-row">
+                  <span class="info-lbl">Created</span>
+                  <span class="info-val">{{ profile.created_at|date:"d M Y, h:i A" }}</span>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="info-row">
+                  <span class="info-lbl">Last Updated</span>
+                  <span class="info-val">{{ profile.updated_at|date:"d M Y, h:i A" }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /row -->
+
+  </div>
+  </div>
+  </div><!-- /container -->
+
+  <!-- Floating edit button -->
+  <a href="{% url 'recommender:profile_form' %}" class="float-edit" title="Edit Profile">
+    <i class="fa-solid fa-pen"></i>
+  </a>
+
+</div><!-- /preview-page -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function shareProfile() {
+  if (navigator.share) {
+    navigator.share({
+      title: '{{ profile.full_name }} — Kissan Profile',
+      text: 'Check out this farmer profile on Crop Recommender',
+      url: window.location.href
+    });
+  } else {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      alert('Profile link copied to clipboard!');
+    });
+  }
+}
+</script>
+{% endblock %}
